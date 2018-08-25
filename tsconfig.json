@@ -22,6 +22,15 @@
       ],
       "@enums/*": [
         "enums/*"
+      ],
+      "@modules/*": [
+        "modules/*"
+      ],
+      "@models/*": [
+        "models/*"
+      ],
+      "@base/*": [
+        "modules/base/*"
       ]
     }
   },
