@@ -1,4 +1,9 @@
-import { FindConditions, FindManyOptions, UpdateResult, DeleteResult } from "typeorm";
+import {
+  FindConditions,
+  FindManyOptions,
+  UpdateResult,
+  DeleteResult
+} from "typeorm";
 
 export interface IBaseService<T> {
   find: (f: FindManyOptions<T> & FindConditions<T>) => Promise<T[]>;

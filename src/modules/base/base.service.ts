@@ -2,15 +2,15 @@ import 'automapper-ts/dist/automapper';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, FindConditions, DeleteResult, UpdateResult } from 'typeorm';
-import { IBaseService } from './base.model';
+import { IBaseService } from './base.interface';
 
 export abstract class BaseService<T> implements IBaseService<T> {
   protected readonly repository: Repository<T>;
   protected readonly mapper: AutoMapperJs.AutoMapper;
 
-  constructor(repository: Repository<T>, mapper: AutoMapperJs.AutoMapper) {
+  constructor(repository: Repository<T>) {
     this.repository = repository;
-    this.mapper = mapper;
+    // this.mapper = mapper;
   }
 
   public async find(filter: FindManyOptions<T> & FindConditions<T>  = {}): Promise<T[]> {

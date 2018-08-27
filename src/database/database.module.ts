@@ -12,7 +12,10 @@ import { DB_TYPE } from '@constants';
       username: ConfigurationService.username,
       password: ConfigurationService.password,
       database: ConfigurationService.dbName,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      entities: [
+        __dirname + '/entities/**/*.entity{.ts,.js}',
+        __dirname + '/../modules/**/*.entity{.ts,.js}'
+      ],
       synchronize: true,
     }),
     ConfigurationService,

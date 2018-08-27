@@ -4,9 +4,7 @@ import { getEnvConfig } from '@utils/get-env-config';
 import { Configuration } from '@enums/configuration';
 import { INestExpressApplication, INestApplication } from '@nestjs/common';
 
-export const setSwaggerConfiguration = (
-  app: INestApplication & INestExpressApplication,
-): void => {
+export const setSwaggerConfiguration = (app: INestApplication & INestExpressApplication): void => {
   const host = getEnvConfig(Configuration.HOST);
   const port = getEnvConfig(Configuration.PORT);
   const dev = isDev();
