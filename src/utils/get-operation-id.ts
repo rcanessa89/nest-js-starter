@@ -5,12 +5,12 @@ export interface IOperationID {
   operationId: string;
 };
 
-export const getOperationId = (model: string, operation: string): IOperationID => {
+export const getOperationId = (model: string, operation: string, title: string = ''): IOperationID => {
   const modelFormated = ToTitleCase(model).replace(/\s/g, '');
   const operationFormated = ToTitleCase(operation).replace(/\s/g, '');
 
   return {
-    title: '',
+    title: title,
     operationId: `${modelFormated}_${operationFormated}`,
   };
 };
