@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigurationService } from './configuration/configuration.service';
 import { DB_TYPE } from '@constants';
+import { isDev } from '@utils/is-dev'; 
+
+const isDevEnv = isDev();
 
 @Module({
   imports: [
@@ -16,7 +19,11 @@ import { DB_TYPE } from '@constants';
         __dirname + '/entities/**/*.entity{.ts,.js}',
         __dirname + '/../modules/**/*.entity{.ts,.js}'
       ],
-      synchronize: true,
+      migrations: [
+        __dirname + '/migrations/**/*.{.ts,.js}'
+      ],
+      migrationsRun: !isDevEnv,
+      synchronize: isDevEnv,
     }),
     ConfigurationService,
   ],
