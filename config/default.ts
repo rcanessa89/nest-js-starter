@@ -6,4 +6,6 @@ export default {
   DB_USERNAME: 'root',
   DB_PASSWORD: 'EDhunter89',
   DB_NAME: 'test',
+  JWT_SECRET_KEY: 'secretKey',
+  JWT_EXPIRATION: 3600,
 };

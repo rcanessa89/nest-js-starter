@@ -1,8 +1,10 @@
 import 'automapper-ts/dist/automapper';
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, FindConditions, DeleteResult, UpdateResult } from 'typeorm';
 import { IBaseService } from './base.interface';
+import { MapperService } from '@services/mapper/mapper.service';
+import 'automapper-ts/dist/automapper';
 
 export abstract class BaseService<T> implements IBaseService<T> {
   protected readonly repository: Repository<T>;
@@ -10,15 +12,26 @@ export abstract class BaseService<T> implements IBaseService<T> {
 
   constructor(repository: Repository<T>) {
     this.repository = repository;
-    // this.mapper = mapper;
+    this.mapper = automapper;
+    this.initializeMapper();
   }
 
-  public async find(filter: FindManyOptions<T> & FindConditions<T>  = {}): Promise<T[]> {
+  public async find(filter: FindManyOptions<T> & FindConditions<T> = {}): Promise<T[]> {
     return this.repository.find(filter);
   }
 
   public async findById(id: string | number): Promise<T> {
-    return this.repository.findOne(id);
+    const parsedId = Number(id);
+
+    if (isNaN(parsedId)) {
+      throw new HttpException('ID invalid', HttpStatus.BAD_REQUEST); 
+    }
+
+    return this.repository.findOne(parsedId);
+  }
+
+  public async findOne(filter: FindConditions<T>): Promise<T> {
+    return this.repository.findOne(filter);
   }
 
   // item param type should be type T but there is an issue with third party library.
@@ -35,7 +48,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
     return this.repository.delete(id);
   }
 
-  protected async map<K>(
+  public async map<K>(
     object: Partial<T> | Partial<T>[],
     sourceKey: string = this.modelName,
     destinationKey: string = this.viewModelName,
@@ -44,16 +57,18 @@ export abstract class BaseService<T> implements IBaseService<T> {
   }
 
   private get modelName(): string {
-    if (typeof this.repository.target === 'string') {
-      return this.repository.target;
-    } else {
-      return this.repository.target();
-    }
+    return this.repository.target['name'];
   }
 
   private get viewModelName(): string {
     const modelName = this.modelName;
 
-    return `${modelName}Vm`;
+    return `${modelName}VM`;
   }
+
+  private initializeMapper(): void {
+    this.mapper.initialize(this.configureMapper);
+  }
+
+  protected abstract configureMapper(config: AutoMapperJs.IConfiguration): void
 }

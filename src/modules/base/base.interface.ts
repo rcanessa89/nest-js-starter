@@ -12,3 +12,11 @@ export interface IBaseService<T> {
   update: (id: string | number, i: any) => Promise<UpdateResult>;
   delete: (i: string | number) => Promise<DeleteResult>;
 };
+
+export interface IAuthGuards {
+  root?: boolean;
+  getById?: boolean;
+  create?: boolean;
+  update?: boolean;
+  delete?: boolean;
+}

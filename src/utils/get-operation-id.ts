@@ -1,4 +1,4 @@
-import { ToTitleCase } from './to-title-case';
+import { toTitleCase } from './to-title-case';
 
 export interface IOperationID {
   title: string;
@@ -6,8 +6,8 @@ export interface IOperationID {
 };
 
 export const getOperationId = (model: string, operation: string, title: string = ''): IOperationID => {
-  const modelFormated = ToTitleCase(model).replace(/\s/g, '');
-  const operationFormated = ToTitleCase(operation).replace(/\s/g, '');
+  const modelFormated = toTitleCase(model).replace(/\s/g, '');
+  const operationFormated = toTitleCase(operation).replace(/\s/g, '');
 
   return {
     title: title,

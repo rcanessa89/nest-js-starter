@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -19,19 +20,38 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiUseTags,
-  ApiResponse
+  ApiResponse,
+  ApiBearerAuth
 } from '@nestjs/swagger';
 import { UpdateResult } from 'typeorm';
 import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
 import { BaseService } from './base.service';
 import { Base } from './base.entity';
+import { AuthGuard } from '@nestjs/passport';
+import { ConditionalDecorator } from '@utils/conditional-decorator';
+import { IAuthGuards } from '@modules/base/base.interface';
+
+const defaultAuthObj = {
+  root: false,
+  getById: false,
+  create: false,
+  update: false,
+  delete: false
+};
 
 export function getBaseController<T>(
   TypeClass: { new(): T },
   TypeCreateVM: { new(): any },
-  TypeUpdateVM: { new(): any }
+  TypeUpdateVM: { new(): any },
+  TypeFindVM: { new(): any },
+  authObj: IAuthGuards = defaultAuthObj
 ) {
+  const auth = {
+    ...defaultAuthObj,
+    ...authObj
+  };
+  
   @ApiUseTags(TypeClass.name)
   abstract class BaseController {
     protected readonly service: BaseService<T>;
@@ -41,6 +61,8 @@ export function getBaseController<T>(
     }
   
     @Get()
+    @ConditionalDecorator(auth.root, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.root, ApiBearerAuth())
     @ApiImplicitQuery({
       name: 'filter',
       description: 'TypeORM find query',
@@ -48,39 +70,51 @@ export function getBaseController<T>(
       isArray: false
     })
     @ApiOkResponse({
-      type: TypeClass,
+      type: TypeFindVM,
       isArray: true
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Find'))  
-    root(@Query('filter') filter = {}): Promise<T[]> {
+    public async root(@Query('filter') filter = {}): Promise<T[] | Partial<T[]>> {
       try {
-        return this.service.find(filter);
+        const data = await this.service.find(filter);
+        const mapped = [];
+
+        data.forEach(async (v: T) => {
+          mapped.push(await this.service.map(v));
+        });
+        
+        return mapped;
+
       } catch(e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
   
     @Get(':id')
+    @ConditionalDecorator(auth.getById, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.getById, ApiBearerAuth())
     @ApiImplicitParam({
       name: 'id',
       description: 'The ID of the entity to find',
       required: true
     })
-    @ApiOkResponse({ type: TypeClass })
+    @ApiOkResponse({ type: TypeFindVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'FindById'))  
-    getById(@Param('id') id: string | number): Promise<T> {
+    public async getById(@Param('id') id: string | number): Promise<T | Partial<T>> {
       try {
-        return this.service.findById(id);
+        return this.service.map(await this.service.findById(id));
       } catch(e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
   
     @Post()
+    @ConditionalDecorator(auth.create, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.create, ApiBearerAuth())
     @ApiImplicitBody({
-      name: 'body',
+      name: TypeCreateVM.name,
       type: TypeCreateVM,
       description: 'Data for entity creation',
       required: true,
@@ -89,17 +123,19 @@ export function getBaseController<T>(
     @ApiCreatedResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Create'))
-    create(@Body() body): Promise<T> {
+    public async create(@Body() body): Promise<T | Partial<T>> {
       try {
-        return this.service.create(body);
+        return this.service.map(await this.service.create(body));
       } catch(e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
   
     @Put()
+    @ConditionalDecorator(auth.update, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.update, ApiBearerAuth())
     @ApiImplicitBody({
-      name: 'body',
+      name: TypeUpdateVM.name,
       type: TypeUpdateVM,
       description: 'Data for entity update',
       required: true,
@@ -108,11 +144,13 @@ export function getBaseController<T>(
     @ApiOkResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Update'))
-    update(@Body() body: { id: string | number } & T): Promise<UpdateResult> {
+    public update(@Body() body: { id: string | number } & T): Promise<UpdateResult> {
       return this.service.update(body.id, body);
     }
   
     @Delete(':id')
+    @ConditionalDecorator(auth.delete, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.delete, ApiBearerAuth())
     @ApiImplicitParam({
       name: 'id',
       description: 'The ID of the entity to delete',
@@ -121,7 +159,7 @@ export function getBaseController<T>(
     @ApiOkResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Delete'))  
-    delete(@Param('id') id: string | number) {
+    public delete(@Param('id') id: string | number) {
       try {
         return this.service.delete(id);
       } catch(e) {

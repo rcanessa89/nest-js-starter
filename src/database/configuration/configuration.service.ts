@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Configuration } from '@enums/configuration';
 import { get } from 'config';
+import { getEnvConfig } from '@utils/get-env-config';
 
 @Injectable()
 export class ConfigurationService {
   static port: number;
-  static host: string = process.env[Configuration.DB_HOST] || get(Configuration.DB_HOST);
-  static username: string = process.env[Configuration.DB_USERNAME] || get(Configuration.DB_USERNAME);
-  static password: string = process.env[Configuration.DB_PASSWORD] || get(Configuration.DB_PASSWORD);
-  static dbName: string = process.env[Configuration.DB_NAME] || get(Configuration.DB_NAME);
+  static host: string = getEnvConfig(Configuration.DB_HOST);
+  static username: string = getEnvConfig(Configuration.DB_USERNAME);
+  static password: string = getEnvConfig(Configuration.DB_PASSWORD);
+  static dbName: string = getEnvConfig(Configuration.DB_NAME);
 
   constructor() {
-    const portParam: string | number = process.env[Configuration.DB_PORT] || get(Configuration.DB_PORT);
+    const portParam: string | number = getEnvConfig(Configuration.DB_PORT);
 
     ConfigurationService.port = ConfigurationService.normalizePort(portParam);
   }
