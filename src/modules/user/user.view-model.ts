@@ -33,7 +33,15 @@ export class UserUpdateVM {
   createdAt: string;
 
   @ApiModelProperty({ type: String, format: 'date-time' })
-  updatedAt: string; 
+  updatedAt: string;
+}
+
+export class UserCredentialsVM {
+  @ApiModelProperty()
+  username: string;
+
+  @ApiModelProperty()
+  password: string;
 }
 
 export class UserLogedVM {

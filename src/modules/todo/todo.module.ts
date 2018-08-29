@@ -7,6 +7,6 @@ import { Todo } from './todo.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([ Todo ])],
   controllers: [TodoController],
-  providers: [TodoService]
+  providers: [TodoService],
 })
 export class TodoModule {}

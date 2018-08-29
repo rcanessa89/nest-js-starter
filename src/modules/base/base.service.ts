@@ -24,7 +24,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
     const parsedId = Number(id);
 
     if (isNaN(parsedId)) {
-      throw new HttpException('ID invalid', HttpStatus.BAD_REQUEST); 
+      throw new HttpException('ID invalid', HttpStatus.BAD_REQUEST);
     }
 
     return this.repository.findOne(parsedId);
@@ -57,7 +57,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
   }
 
   private get modelName(): string {
-    return this.repository.target['name'];
+    return this.repository.target as string;
   }
 
   private get viewModelName(): string {
@@ -70,5 +70,5 @@ export abstract class BaseService<T> implements IBaseService<T> {
     this.mapper.initialize(this.configureMapper);
   }
 
-  protected abstract configureMapper(config: AutoMapperJs.IConfiguration): void
+  protected abstract configureMapper(config: AutoMapperJs.IConfiguration): void;
 }

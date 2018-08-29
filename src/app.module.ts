@@ -4,6 +4,10 @@ import { DatabaseModule } from './database/database.module';
 import { ModulesModule } from './modules/modules.module';
 
 @Module({
-  imports: [ServicesModule, DatabaseModule, ModulesModule]
+  imports: [
+    ServicesModule,
+    DatabaseModule,
+    ModulesModule,
+  ],
 })
 export class AppModule {}

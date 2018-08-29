@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { compare, genSalt, hash } from 'bcryptjs';
 import { BaseService } from '@modules/base/base.service';
 import { User } from '@modules/user/user.entity';
-import { IJwtPayload, } from '@modules/user/user.interface';
+import { IJwtPayload } from '@modules/user/user.interface';
 import { UserCreateVM, UserLogedVM, UserFindVM } from '@modules/user/user.view-model';
 import { PASSWORD_SALT } from '@constants';
 
@@ -14,14 +14,14 @@ export class UserService extends BaseService<User> {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {
     super(userRepository);
   }
 
   public createToken(username: string): string {
     const payload: IJwtPayload = {
-      username: username.toLowerCase()
+      username: username.toLowerCase(),
     };
 
     return this.jwtService.sign(payload);
@@ -29,7 +29,7 @@ export class UserService extends BaseService<User> {
 
   public async validateUser(payload: IJwtPayload): Promise<User> {
     const filter = {
-      username: payload.username.toLowerCase()
+      username: payload.username.toLowerCase(),
     };
 
     return this.findOne(filter);

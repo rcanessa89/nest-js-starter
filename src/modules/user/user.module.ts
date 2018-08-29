@@ -16,10 +16,10 @@ import { JwtStrategy } from '@modules/user/jwt-strategy.service';
       signOptions: {
         expiresIn: getEnvConfig(Configuration.JWT_EXPIRATION),
       },
-    })
+    }),
   ],
   controllers: [UserController],
   providers: [UserService, JwtStrategy],
-  exports: [JwtStrategy]
+  exports: [JwtStrategy],
 })
 export class UserModule {}

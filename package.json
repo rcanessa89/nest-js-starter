@@ -13,7 +13,8 @@
     "test": "jest",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "webpack": "webpack --config webpack.config.js"
+    "webpack": "webpack --config webpack.config.js",
+    "lint": "./node_modules/.bin/tslint -c tslint.json 'src/**/*.ts'"
   },
   "dependencies": {
     "@nestjs/common": "^5.2.2",

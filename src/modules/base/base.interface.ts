@@ -2,8 +2,8 @@ import {
   FindConditions,
   FindManyOptions,
   UpdateResult,
-  DeleteResult
-} from "typeorm";
+  DeleteResult,
+} from 'typeorm';
 
 export interface IBaseService<T> {
   find: (f: FindManyOptions<T> & FindConditions<T>) => Promise<T[]>;
@@ -11,7 +11,7 @@ export interface IBaseService<T> {
   create: (i: any) => Promise<T>;
   update: (id: string | number, i: any) => Promise<UpdateResult>;
   delete: (i: string | number) => Promise<DeleteResult>;
-};
+}
 
 export interface IAuthGuards {
   root?: boolean;

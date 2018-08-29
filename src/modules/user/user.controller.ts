@@ -1,24 +1,48 @@
 import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  ApiImplicitBody,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { getBaseController } from '@modules/base/base.controller';
 import { User } from '@modules/user/user.entity';
-import { UserCreateVM, UserUpdateVM, UserFindVM, UserLogedVM } from '@modules/user/user.view-model';
 import { UserService } from '@modules/user/user.service';
+import { getOperationId } from '@utils/get-operation-id';
+import {
+  UserCreateVM,
+  UserUpdateVM,
+  UserFindVM,
+  UserLogedVM,
+  UserCredentialsVM,
+} from '@modules/user/user.view-model';
+import { ApiException } from '@models/api-exception.model';
 
 const BaseController = getBaseController<User>(User, UserCreateVM, UserUpdateVM, UserFindVM);
 
 @Controller('user')
 export class UserController extends BaseController {
   constructor(
-    private readonly userService: UserService
+    private readonly userService: UserService,
   ) {
     super(userService);
   }
 
   @Post('register')
+  @ApiImplicitBody({
+    name: UserCreateVM.name,
+    type: UserCreateVM,
+    description: 'Register data',
+    required: true,
+    isArray: false,
+  })
+  @ApiCreatedResponse({ type: UserFindVM })
+  @ApiBadRequestResponse({ type: ApiException })
+  @ApiOperation(getOperationId(UserCreateVM.name, 'Create'))
   public async create(@Body() vm: UserCreateVM): Promise<UserFindVM | any> {
     const {
       username,
-      password
+      password,
     } = vm;
 
     if (!username) {
@@ -33,9 +57,9 @@ export class UserController extends BaseController {
 
     try {
       exist = await this.userService.findOne({
-        username: username.toLowerCase()
+        username: username.toLowerCase(),
       });
-    } catch(e) {
+    } catch (e) {
       throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -49,7 +73,17 @@ export class UserController extends BaseController {
   }
 
   @Post('login')
-  public login(@Body() vm: UserCreateVM): Promise<UserLogedVM> {
+  @ApiImplicitBody({
+    name: UserCredentialsVM.name,
+    type: UserCredentialsVM,
+    description: 'Login credentials',
+    required: true,
+    isArray: false,
+  })
+  @ApiCreatedResponse({ type: UserLogedVM })
+  @ApiBadRequestResponse({ type: ApiException })
+  @ApiOperation(getOperationId(UserCredentialsVM.name, 'Create'))
+  public login(@Body() vm: UserCredentialsVM): Promise<UserLogedVM> {
     return this.userService.login(vm);
   }
 }

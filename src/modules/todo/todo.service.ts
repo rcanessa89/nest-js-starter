@@ -8,7 +8,7 @@ import { Todo } from './todo.entity';
 export class TodoService extends BaseService<Todo> {
   constructor(
     @InjectRepository(Todo)
-    private readonly todoRepository: Repository<Todo>
+    private readonly todoRepository: Repository<Todo>,
   ) {
     super(todoRepository);
   }

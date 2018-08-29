@@ -11,7 +11,7 @@ const BaseController = getBaseController<Todo>(Todo, TodoCreateVM, TodoUpdateVM,
 @Controller('todo')
 export class TodoController extends BaseController {
   constructor(
-    private readonly todoService: TodoService
+    private readonly todoService: TodoService,
   ) {
     super(todoService);
   }

@@ -10,7 +10,7 @@ export class Todo extends Base {
 
   @Column({
     type: Boolean,
-    default: false
+    default: false,
   })
   @ApiModelProperty()
   isComplete: boolean;
