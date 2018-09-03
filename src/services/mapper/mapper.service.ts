@@ -10,13 +10,17 @@ export class MapperService {
     this.initializeMapper();
   }
 
+  public async map<T>(
+    object: Partial<T> | Partial<T>[],
+    sourceKey: string,
+    destinationKey: string,
+  ): Promise<T> {
+    return this.mapper.map(sourceKey, destinationKey, object);
+  }
+
   private initializeMapper(): void {
     this.mapper.initialize(MapperService.configure);
   }
 
-  private static configure(config: AutoMapperJs.IConfiguration): void {
-    config
-      .createMap('User', 'UserVM')
-      .forSourceMember('password', opts => opts.ignore());
-  }
+  private static configure(config: AutoMapperJs.IConfiguration): void {}
 }

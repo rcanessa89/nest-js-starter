@@ -1,11 +1,11 @@
-import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpException, HttpStatus, Get } from '@nestjs/common';
 import {
   ApiImplicitBody,
   ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiOperation,
 } from '@nestjs/swagger';
-import { getBaseController } from '@modules/base/base.controller';
+import { baseControllerFactory } from '@modules/base/base.controller';
 import { User } from '@modules/user/user.entity';
 import { UserService } from '@modules/user/user.service';
 import { getOperationId } from '@utils/get-operation-id';
@@ -18,7 +18,7 @@ import {
 } from '@modules/user/user.view-model';
 import { ApiException } from '@models/api-exception.model';
 
-const BaseController = getBaseController<User>(User, UserCreateVM, UserUpdateVM, UserFindVM);
+const BaseController = baseControllerFactory<User>(User, UserCreateVM, UserUpdateVM, UserFindVM);
 
 @Controller('user')
 export class UserController extends BaseController {

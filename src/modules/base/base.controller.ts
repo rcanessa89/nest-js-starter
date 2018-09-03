@@ -6,10 +6,12 @@ import {
   HttpStatus,
   InternalServerErrorException,
   Param,
+  Patch,
   Post,
   Put,
   Query,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -37,10 +39,14 @@ const defaultAuthObj = {
   getById: true,
   create: true,
   update: true,
+  updateOrCreate: true,
   delete: true,
+  count: true,
 };
 
-export function getBaseController<T>(
+const authGuardType = 'jwt';
+
+export function baseControllerFactory<T>(
   TypeClass: { new(): T },
   TypeCreateVM: { new(): any },
   TypeUpdateVM: { new(): any },
@@ -61,7 +67,7 @@ export function getBaseController<T>(
     }
 
     @Get()
-    @ConditionalDecorator(auth.root, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.root, UseGuards(AuthGuard(authGuardType)))
     @ConditionalDecorator(auth.root, ApiBearerAuth())
     @ApiImplicitQuery({
       name: 'filter',
@@ -90,8 +96,21 @@ export function getBaseController<T>(
       }
     }
 
+    @Get('count')
+    @ConditionalDecorator(auth.count, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.count, ApiBearerAuth())
+    @ApiBadRequestResponse({ type: ApiException })
+    @ApiOperation(getOperationId(TypeClass.name, 'Count'))
+    public count() {
+      try {
+        return this.service.count();
+      } catch (e) {
+        throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
     @Get(':id')
-    @ConditionalDecorator(auth.getById, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.getById, UseGuards(AuthGuard(authGuardType)))
     @ConditionalDecorator(auth.getById, ApiBearerAuth())
     @ApiImplicitParam({
       name: 'id',
@@ -110,7 +129,7 @@ export function getBaseController<T>(
     }
 
     @Post()
-    @ConditionalDecorator(auth.create, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.create, UseGuards(AuthGuard(authGuardType)))
     @ConditionalDecorator(auth.create, ApiBearerAuth())
     @ApiImplicitBody({
       name: TypeCreateVM.name,
@@ -131,7 +150,38 @@ export function getBaseController<T>(
     }
 
     @Put()
-    @ConditionalDecorator(auth.update, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.updateOrCreate, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.updateOrCreate, ApiBearerAuth())
+    @ApiImplicitBody({
+      name: TypeUpdateVM.name,
+      type: TypeUpdateVM,
+      description: 'Data for entity update or create',
+      required: true,
+      isArray: false,
+    })
+    @ApiOkResponse({ type: TypeClass })
+    @ApiBadRequestResponse({ type: ApiException })
+    @ApiOperation(getOperationId(TypeClass.name, 'UpdateOrCreate'))
+    public async updateOrCreate(@Body() body: { id: string | number } & T): Promise<UpdateResult | T | Partial<T>> {
+      const entity = await this.service.findById(body.id);
+
+      if (!entity) {
+        try {
+          return this.service.map<T>(await this.service.create(body));
+        } catch (e) {
+          throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+      }
+
+      try {
+        return this.service.update(body.id, body);
+      } catch (e) {
+        throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @Patch()
+    @ConditionalDecorator(auth.update, UseGuards(AuthGuard(authGuardType)))
     @ConditionalDecorator(auth.update, ApiBearerAuth())
     @ApiImplicitBody({
       name: TypeUpdateVM.name,
@@ -144,11 +194,15 @@ export function getBaseController<T>(
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Update'))
     public update(@Body() body: { id: string | number } & T): Promise<UpdateResult> {
-      return this.service.update(body.id, body);
+      try {
+        return this.service.update(body.id, body);
+      } catch (e) {
+        throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
     }
 
     @Delete(':id')
-    @ConditionalDecorator(auth.delete, UseGuards(AuthGuard('jwt')))
+    @ConditionalDecorator(auth.delete, UseGuards(AuthGuard(authGuardType)))
     @ConditionalDecorator(auth.delete, ApiBearerAuth())
     @ApiImplicitParam({
       name: 'id',

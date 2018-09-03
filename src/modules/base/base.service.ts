@@ -48,6 +48,10 @@ export abstract class BaseService<T> implements IBaseService<T> {
     return this.repository.delete(id);
   }
 
+  public async count(): Promise<number> {
+    return this.repository.count();
+  }
+
   public async map<K>(
     object: Partial<T> | Partial<T>[],
     sourceKey: string = this.modelName,
@@ -57,7 +61,9 @@ export abstract class BaseService<T> implements IBaseService<T> {
   }
 
   private get modelName(): string {
-    return this.repository.target as string;
+    const target: any = this.repository.target;
+
+    return target.name;
   }
 
   private get viewModelName(): string {
