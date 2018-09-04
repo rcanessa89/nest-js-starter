@@ -12,7 +12,30 @@
     "sourceMap": true,
     "allowJs": true,
     "outDir": "./dist",
-    "baseUrl": "./src"
+    "baseUrl": "./src",
+    "paths": {
+      "@constants": [
+        "app.constants"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ],
+      "@enums/*": [
+        "enums/*"
+      ],
+      "@modules/*": [
+        "modules/*"
+      ],
+      "@models/*": [
+        "models/*"
+      ],
+      "@base/*": [
+        "modules/base/*"
+      ],
+      "@services/*": [
+        "services/*"
+      ]
+    }
   },
   "include": [
     "src/**/*"
