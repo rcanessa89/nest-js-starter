@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { getEnvConfig } from '@utils/get-env-config';
+import { isDev } from '@utils/is-dev';
 import { Configuration } from '@enums/configuration';
 import { setSwaggerConfiguration } from './swagger-config';
 
@@ -14,6 +15,10 @@ async function bootstrap() {
   if (module.hot) {
     module.hot.accept();
     module.hot.dispose(() => app.close());
+  }
+
+  if (isDev()) {
+    app.enableCors();
   }
 
   app.setGlobalPrefix('api');
