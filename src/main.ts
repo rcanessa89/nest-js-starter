@@ -12,11 +12,6 @@ async function bootstrap() {
 
   setSwaggerConfiguration(app);
 
-  if (module.hot) {
-    module.hot.accept();
-    module.hot.dispose(() => app.close());
-  }
-
   if (isDev()) {
     app.enableCors();
   }
