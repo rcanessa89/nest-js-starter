@@ -8,4 +8,5 @@ export enum Configuration {
   DB_NAME = 'DB_NAME',
   JWT_SECRET_KEY = 'JWT_SECRET_KEY',
   JWT_EXPIRATION = 'JWT_EXPIRATION',
+  FROM_EMAIL = 'FROM_EMAIL',
 }

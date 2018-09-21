@@ -1,12 +1,24 @@
-import { Controller, Post, Body, HttpException, HttpStatus, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  HttpException,
+  HttpStatus,
+  Get,
+  UseGuards,
+  Param,
+} from '@nestjs/common';
 import {
   ApiImplicitBody,
   ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiOperation,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { baseControllerFactory } from '@modules/base/base.controller';
-import { User } from '@modules/user/user.entity';
+import { User } from '@entities/user.entity';
 import { UserService } from '@modules/user/user.service';
 import { getOperationId } from '@utils/get-operation-id';
 import {
@@ -15,10 +27,18 @@ import {
   UserFindVM,
   UserLogedVM,
   UserCredentialsVM,
-} from '@modules/user/user.view-model';
+} from '@modules/user/user.vm';
 import { ApiException } from '@models/api-exception.model';
+import { AUTH_GUARD_TYPE } from '@constants';
+import { AuthGuard } from '@nestjs/passport';
 
-const BaseController = baseControllerFactory<User>(User, UserCreateVM, UserUpdateVM, UserFindVM);
+const BaseController = baseControllerFactory<User>(
+  User,
+  UserCreateVM,
+  UserUpdateVM,
+  UserFindVM,
+  true,
+);
 
 @Controller('user')
 export class UserController extends BaseController {
@@ -45,14 +65,6 @@ export class UserController extends BaseController {
       password,
     } = vm;
 
-    if (!username) {
-      throw new HttpException('Username is required', HttpStatus.BAD_REQUEST);
-    }
-
-    if (!password) {
-      throw new HttpException('Password is required', HttpStatus.BAD_REQUEST);
-    }
-
     let exist;
 
     try {
@@ -63,7 +75,7 @@ export class UserController extends BaseController {
       throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    if (exist.length) {
+    if (exist) {
       throw new HttpException(`${username} exists`, HttpStatus.BAD_REQUEST);
     }
 
@@ -85,5 +97,41 @@ export class UserController extends BaseController {
   @ApiOperation(getOperationId(UserCredentialsVM.name, 'Create'))
   public login(@Body() vm: UserCredentialsVM): Promise<UserLogedVM> {
     return this.userService.login(vm);
+  }
+
+  @Get('validate')
+  @UseGuards(AuthGuard(AUTH_GUARD_TYPE))
+  @ApiBearerAuth()
+  @ApiCreatedResponse({ type: UserFindVM })
+  @ApiBadRequestResponse({ type: ApiException })
+  @ApiOperation(getOperationId(User.name, 'Validate'))
+  public validate(@Req() req: Request): Promise<UserFindVM> {
+    const headerValue = req.headers.authorization;
+    const token = headerValue.split(' ').pop();
+
+    return this.userService.decodeToken(token);
+  }
+
+  @Get('confirm/:token')
+  @ApiCreatedResponse({ type: UserFindVM })
+  @ApiBadRequestResponse({ type: ApiException })
+  @ApiOperation(getOperationId(User.name, 'Confirm'))
+  public async confirm(@Param('token') token: string): Promise<UserFindVM> {
+    try {
+      const verification = this.userService.jwtService.verify(token);
+      const user = await this.userService.getUserByJwtPayload(verification);
+
+      if (user.confirmed) {
+        throw new HttpException('User account already confirmated', HttpStatus.BAD_REQUEST);
+      }
+
+      user.confirmed = true;
+
+      this.userService.update(user.id, user);
+
+      return user;
+    } catch (e) {
+      throw new HttpException(e, HttpStatus.FORBIDDEN);
+    }
   }
 }

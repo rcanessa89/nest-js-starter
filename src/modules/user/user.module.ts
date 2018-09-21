@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
-import { User } from '@modules/user/user.entity';
+import { User } from '@entities/user.entity';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { getEnvConfig } from '@utils/get-env-config';

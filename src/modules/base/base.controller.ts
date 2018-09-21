@@ -25,16 +25,17 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { UpdateResult } from 'typeorm';
+import { UpdateResult, DeleteResult } from 'typeorm';
 import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
 import { BaseService } from './base.service';
 import { Base } from './base.entity';
 import { AuthGuard } from '@nestjs/passport';
 import { ConditionalDecorator } from '@utils/conditional-decorator';
-import { IAuthGuards } from '@modules/base/base.interface';
+import { DefaultAuthObj } from '@modules/base/base.interface';
+import { AUTH_GUARD_TYPE } from '@constants';
 
-const defaultAuthObj = {
+const defaultAuthObj: DefaultAuthObj = {
   root: true,
   getById: true,
   create: true,
@@ -44,19 +45,33 @@ const defaultAuthObj = {
   count: true,
 };
 
-const authGuardType = 'jwt';
-
 export function baseControllerFactory<T>(
   TypeClass: { new(): T },
-  TypeCreateVM: { new(): any },
-  TypeUpdateVM: { new(): any },
-  TypeFindVM: { new(): any },
-  authObj: IAuthGuards = defaultAuthObj,
+  TypeCreateVM: { new(): any } = TypeClass,
+  TypeUpdateVM: { new(): any } = TypeClass,
+  TypeFindVM: { new(): any } = TypeClass,
+  authObj: DefaultAuthObj | boolean = defaultAuthObj,
 ) {
-  const auth = {
-    ...defaultAuthObj,
-    ...authObj,
-  };
+  let auth = null;
+
+  if (authObj === true) {
+    auth = defaultAuthObj;
+  } else if (authObj === false) {
+    auth = {
+      root: false,
+      getById: false,
+      create: false,
+      update: false,
+      updateOrCreate: false,
+      delete: false,
+      count: false,
+    };
+  } else {
+    auth = {
+      ...defaultAuthObj,
+      ...authObj as DefaultAuthObj,
+    };
+  }
 
   @ApiUseTags(TypeClass.name)
   abstract class BaseController {
@@ -67,7 +82,7 @@ export function baseControllerFactory<T>(
     }
 
     @Get()
-    @ConditionalDecorator(auth.root, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.root, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.root, ApiBearerAuth())
     @ApiImplicitQuery({
       name: 'filter',
@@ -81,14 +96,20 @@ export function baseControllerFactory<T>(
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Find'))
-    public async root(@Query('filter') filter = {}): Promise<T[] | Partial<T[]>> {
+    public async root(@Query('filter') filter): Promise<T[] | Partial<T[]>> {
+      const parsedFilter = filter ? JSON.parse(filter) : {};
+
       try {
-        const data = await this.service.find(filter);
+        this.beforeRoot(parsedFilter);
+
+        const data = await this.service.find(parsedFilter);
         const mapped = [];
 
         data.forEach(async (v: T) => {
           mapped.push(await this.service.map(v));
         });
+
+        this.afterRoot(mapped);
 
         return mapped;
       } catch (e) {
@@ -97,20 +118,26 @@ export function baseControllerFactory<T>(
     }
 
     @Get('count')
-    @ConditionalDecorator(auth.count, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.count, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.count, ApiBearerAuth())
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Count'))
-    public count() {
+    public count(): Promise<number> {
       try {
-        return this.service.count();
+        this.beforeCount();
+
+        const count = this.service.count();
+
+        this.afterCount(count);
+
+        return count;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
     @Get(':id')
-    @ConditionalDecorator(auth.getById, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.getById, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.getById, ApiBearerAuth())
     @ApiImplicitParam({
       name: 'id',
@@ -122,14 +149,20 @@ export function baseControllerFactory<T>(
     @ApiOperation(getOperationId(TypeClass.name, 'FindById'))
     public async getById(@Param('id') id: string | number): Promise<T | Partial<T>> {
       try {
-        return this.service.map(await this.service.findById(id));
+        this.beforeGetById(id);
+
+        const data = this.service.map(await this.service.findById(id));
+
+        this.aftergetById(data);
+
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
     @Post()
-    @ConditionalDecorator(auth.create, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.create, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.create, ApiBearerAuth())
     @ApiImplicitBody({
       name: TypeCreateVM.name,
@@ -141,16 +174,22 @@ export function baseControllerFactory<T>(
     @ApiCreatedResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Create'))
-    public async create(@Body() body): Promise<T | Partial<T>> {
+    public async create(@Body() body: any): Promise<T | Partial<T>> {
       try {
-        return this.service.map(await this.service.create(body));
+        await this.beforeCreate(body);
+
+        const data = this.service.map(await this.service.create(body));
+
+        this.afterCreate(data);
+
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
     @Put()
-    @ConditionalDecorator(auth.updateOrCreate, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.updateOrCreate, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.updateOrCreate, ApiBearerAuth())
     @ApiImplicitBody({
       name: TypeUpdateVM.name,
@@ -159,7 +198,6 @@ export function baseControllerFactory<T>(
       required: true,
       isArray: false,
     })
-    @ApiOkResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'UpdateOrCreate'))
     public async updateOrCreate(@Body() body: { id: string | number } & T): Promise<UpdateResult | T | Partial<T>> {
@@ -167,7 +205,13 @@ export function baseControllerFactory<T>(
 
       if (!entity) {
         try {
-          return this.service.map<T>(await this.service.create(body));
+          this.beforeUpdateOrCreate(body);
+
+          const data = this.service.map<T>(await this.service.create(body));
+
+          this.afterUpdateOrCreate(data);
+
+          return data;
         } catch (e) {
           throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -181,7 +225,7 @@ export function baseControllerFactory<T>(
     }
 
     @Patch()
-    @ConditionalDecorator(auth.update, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.update, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.update, ApiBearerAuth())
     @ApiImplicitBody({
       name: TypeUpdateVM.name,
@@ -195,30 +239,57 @@ export function baseControllerFactory<T>(
     @ApiOperation(getOperationId(TypeClass.name, 'Update'))
     public update(@Body() body: { id: string | number } & T): Promise<UpdateResult> {
       try {
-        return this.service.update(body.id, body);
+        this.beforeUpdate(body);
+
+        const data = this.service.update(body.id, body);
+
+        this.afterUpdate(data);
+
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
     @Delete(':id')
-    @ConditionalDecorator(auth.delete, UseGuards(AuthGuard(authGuardType)))
+    @ConditionalDecorator(auth.delete, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.delete, ApiBearerAuth())
     @ApiImplicitParam({
       name: 'id',
       description: 'The ID of the entity to delete',
       required: true,
     })
-    @ApiOkResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Delete'))
-    public delete(@Param('id') id: string | number) {
+    public delete(@Param('id') id: string | number): Promise<DeleteResult> {
       try {
-        return this.service.delete(id);
+        this.beforeDelete(id);
+
+        const data = this.service.delete(id);
+
+        this.afterDelete(data);
+
+        return data;
       } catch (e) {
         throw new InternalServerErrorException(e);
       }
     }
+
+    // Hooks
+    protected beforeRoot(f: any): void {}
+    protected afterRoot(d: T[] | Partial<T[]>): void {}
+    protected beforeCount(): void {}
+    protected afterCount(c: Promise<number>): void {}
+    protected beforeGetById(i: string | number): void {}
+    protected aftergetById(d: Promise<T | Partial<T>>): void {}
+    protected beforeCreate(b: any): void {}
+    protected afterCreate(d: Promise<T | Partial<T>>): void {}
+    protected beforeUpdateOrCreate(b: { id: string | number } & T): void {}
+    protected afterUpdateOrCreate(d: Promise<UpdateResult | T | Partial<T>>): void {}
+    protected beforeUpdate(b: { id: string | number } & T): void {}
+    protected afterUpdate(d: Promise<UpdateResult>): void {}
+    protected beforeDelete(i: string | number): void {}
+    protected afterDelete(d: Promise<DeleteResult>): void {}
   }
 
   return BaseController;

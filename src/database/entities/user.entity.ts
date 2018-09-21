@@ -7,10 +7,11 @@ export class User extends Base {
   @Column({
     unique: true,
   })
-  @ApiModelProperty()
   username: string;
 
   @Column()
-  @ApiModelProperty()
   password: string;
+
+  @Column()
+  confirmed: boolean = false;
 }
