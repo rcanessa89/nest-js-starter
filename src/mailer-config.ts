@@ -1,9 +1,12 @@
+import { getEnvConfig } from '@utils/get-env-config';
+import { Configuration } from '@enums/configuration';
+
 export const mailerConfig = {
   transport: {
     service: 'gmail',
     auth: {
-      user: 'rcanessae89@gmail.com',
-      pass: 'EDhunter666',
+      user: getEnvConfig(Configuration.EMAIL_USER),
+      pass: getEnvConfig(Configuration.EMAIL_PASSWORD),
     },
   },
 };

@@ -9,4 +9,6 @@ export default {
   JWT_SECRET_KEY: 'secretKey',
   JWT_EXPIRATION: 3600,
   FROM_EMAIL: '',
+  EMAIL_USER: '',
+  EMAIL_PASSWORD: '',
 };
