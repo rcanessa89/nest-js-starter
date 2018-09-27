@@ -25,7 +25,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { UpdateResult, DeleteResult } from 'typeorm';
+import { UpdateResult, DeleteResult, FindManyOptions, FindConditions } from 'typeorm';
 import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
 import { BaseService } from './base.service';
@@ -45,13 +45,7 @@ const defaultAuthObj: DefaultAuthObj = {
   count: true,
 };
 
-export function baseControllerFactory<T>(
-  TypeClass: { new(): T },
-  TypeCreateVM: { new(): any } = TypeClass,
-  TypeUpdateVM: { new(): any } = TypeClass,
-  TypeFindVM: { new(): any } = TypeClass,
-  authObj: DefaultAuthObj | boolean = defaultAuthObj,
-) {
+const getAuthObj = (authObj: DefaultAuthObj | boolean): DefaultAuthObj => {
   let auth = null;
 
   if (authObj === true) {
@@ -69,9 +63,21 @@ export function baseControllerFactory<T>(
   } else {
     auth = {
       ...defaultAuthObj,
-      ...authObj as DefaultAuthObj,
+      ...authObj,
     };
   }
+
+  return auth;
+};
+
+export function baseControllerFactory<T, C = T, U = T, F = T>(
+  TypeClass: { new(): T },
+  TypeFindVM: { new(): any } = TypeClass,
+  TypeCreateVM: { new(): any } = TypeClass,
+  TypeUpdateVM: { new(): any } = TypeClass,
+  authObj: DefaultAuthObj | boolean = defaultAuthObj,
+) {
+  let auth = getAuthObj(authObj);
 
   @ApiUseTags(TypeClass.name)
   abstract class BaseController {
@@ -96,22 +102,19 @@ export function baseControllerFactory<T>(
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Find'))
-    public async root(@Query('filter') filter): Promise<T[] | Partial<T[]>> {
+    public async root(@Query('filter') filter): Promise<T[] | Partial<T>[]> {
       const parsedFilter = filter ? JSON.parse(filter) : {};
 
       try {
         this.beforeRoot(parsedFilter);
 
         const data = await this.service.find(parsedFilter);
-        const mapped = [];
+        const dataPromise = Promise.all(data.map(item => this.service.map(item)));
+        const mapped = await dataPromise;
 
-        data.forEach(async (v: T) => {
-          mapped.push(await this.service.map(v));
-        });
+        this.afterRoot(parsedFilter, mapped);
 
-        this.afterRoot(mapped);
-
-        return mapped;
+        return dataPromise;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -151,11 +154,13 @@ export function baseControllerFactory<T>(
       try {
         this.beforeGetById(id);
 
-        const data = this.service.map(await this.service.findById(id));
+        const data = await this.service.findById(id);
+        const mappedPromise = this.service.map(data);
+        const mapped = await mappedPromise;
 
-        this.aftergetById(data);
+        this.aftergetById(id, mapped);
 
-        return data;
+        return mappedPromise;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -174,13 +179,14 @@ export function baseControllerFactory<T>(
     @ApiCreatedResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Create'))
-    public async create(@Body() body: any): Promise<T | Partial<T>> {
+    public async create(@Body() body: C): Promise<T | Partial<T>> {
       try {
-        await this.beforeCreate(body);
+        this.beforeCreate(body);
 
-        const data = this.service.map(await this.service.create(body));
+        const created = await this.service.create(body);
+        const data = await this.service.map(created);
 
-        this.afterCreate(data);
+        this.afterCreate(body, created);
 
         return data;
       } catch (e) {
@@ -200,16 +206,17 @@ export function baseControllerFactory<T>(
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'UpdateOrCreate'))
-    public async updateOrCreate(@Body() body: { id: string | number } & T): Promise<UpdateResult | T | Partial<T>> {
+    public async updateOrCreate(@Body() body: { id: string | number } & U): Promise<UpdateResult | T | Partial<T>> {
       const entity = await this.service.findById(body.id);
 
       if (!entity) {
         try {
           this.beforeUpdateOrCreate(body);
 
-          const data = this.service.map<T>(await this.service.create(body));
+          const created = await this.service.create(body);
+          const data = this.service.map(created);
 
-          this.afterUpdateOrCreate(data);
+          this.afterUpdateOrCreate(body, created);
 
           return data;
         } catch (e) {
@@ -218,7 +225,14 @@ export function baseControllerFactory<T>(
       }
 
       try {
-        return this.service.update(body.id, body);
+        this.beforeUpdateOrCreate(body);
+
+        const updatedPromise = this.service.update(body.id, body);
+        const updated = await updatedPromise;
+
+        this.afterUpdateOrCreate(body, updated);
+
+        return updated;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -237,15 +251,16 @@ export function baseControllerFactory<T>(
     @ApiOkResponse({ type: TypeClass })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Update'))
-    public update(@Body() body: { id: string | number } & T): Promise<UpdateResult> {
+    public async update(@Body() body: { id: string | number } & U): Promise<UpdateResult> {
       try {
         this.beforeUpdate(body);
+        
+        const updatedPromise = this.service.update(body.id, body);
+        const updated = await updatedPromise;
 
-        const data = this.service.update(body.id, body);
+        this.afterUpdate(body, updated);
 
-        this.afterUpdate(data);
-
-        return data;
+        return updatedPromise;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -261,35 +276,42 @@ export function baseControllerFactory<T>(
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(TypeClass.name, 'Delete'))
-    public delete(@Param('id') id: string | number): Promise<DeleteResult> {
+    public async delete(@Param('id') id: string | number): Promise<DeleteResult> {
       try {
         this.beforeDelete(id);
 
-        const data = this.service.delete(id);
+        const deletedPromise = this.service.delete(id);
+        const deleted = await deletedPromise;
 
-        this.afterDelete(data);
+        this.afterDelete(id, deleted);
 
-        return data;
+        return deletedPromise;
       } catch (e) {
         throw new InternalServerErrorException(e);
       }
     }
 
     // Hooks
-    protected beforeRoot(f: any): void {}
-    protected afterRoot(d: T[] | Partial<T[]>): void {}
+    protected beforeRoot(f: FindManyOptions<T> & FindConditions<T> = {}): void {}
+    protected afterRoot(f: FindManyOptions<T> & FindConditions<T> = {}, d: T[] | Partial<T>[]): void {}
+
     protected beforeCount(): void {}
     protected afterCount(c: Promise<number>): void {}
+
     protected beforeGetById(i: string | number): void {}
-    protected aftergetById(d: Promise<T | Partial<T>>): void {}
-    protected beforeCreate(b: any): void {}
-    protected afterCreate(d: Promise<T | Partial<T>>): void {}
-    protected beforeUpdateOrCreate(b: { id: string | number } & T): void {}
-    protected afterUpdateOrCreate(d: Promise<UpdateResult | T | Partial<T>>): void {}
-    protected beforeUpdate(b: { id: string | number } & T): void {}
-    protected afterUpdate(d: Promise<UpdateResult>): void {}
+    protected aftergetById(i: string | number, d: T | Partial<T>): void {}
+
+    protected beforeCreate(b: C): void {}
+    protected afterCreate(b: C, d: T): void {}
+
+    protected beforeUpdateOrCreate(b: { id: string | number } & U): void {}
+    protected afterUpdateOrCreate(b: { id: string | number } & U, d: T | UpdateResult): void {}
+
+    protected beforeUpdate(b: { id: string | number } & U): void {}
+    protected afterUpdate(b: { id: string | number } & U, d: UpdateResult): void {}
+
     protected beforeDelete(i: string | number): void {}
-    protected afterDelete(d: Promise<DeleteResult>): void {}
+    protected afterDelete(i: string | number, d: DeleteResult): void {}
   }
 
   return BaseController;

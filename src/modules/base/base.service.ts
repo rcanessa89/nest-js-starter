@@ -4,7 +4,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions, FindConditions, DeleteResult, UpdateResult } from 'typeorm';
 import { IBaseService } from './base.interface';
 import { MapperService } from '@services/mapper/mapper.service';
-import 'automapper-ts/dist/automapper';
 
 export abstract class BaseService<T> implements IBaseService<T> {
   protected readonly repository: Repository<T>;
