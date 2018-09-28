@@ -17,6 +17,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
+
 import { baseControllerFactory } from '@modules/base/base.controller';
 import { User } from '@entities/user.entity';
 import { UserService } from '@modules/user/user.service';
@@ -24,7 +25,7 @@ import { getOperationId } from '@utils/get-operation-id';
 import {
   UserCreateVM,
   UserUpdateVM,
-  UserFindVM,
+  UserVM,
   UserLogedVM,
   UserCredentialsVM,
 } from '@modules/user/user.vm';
@@ -32,13 +33,13 @@ import { ApiException } from '@models/api-exception.model';
 import { AUTH_GUARD_TYPE } from '@constants';
 import { AuthGuard } from '@nestjs/passport';
 
-const BaseController = baseControllerFactory<User>(
-  User,
-  UserCreateVM,
-  UserUpdateVM,
-  UserFindVM,
-  true,
-);
+const BaseController = baseControllerFactory<User>({
+  entity: User,
+  entityVm: UserVM,
+  entityCreateVm: UserCreateVM,
+  entityUpdateVm: UserUpdateVM,
+  auth: true
+});
 
 @Controller('user')
 export class UserController extends BaseController {
@@ -56,10 +57,10 @@ export class UserController extends BaseController {
     required: true,
     isArray: false,
   })
-  @ApiCreatedResponse({ type: UserFindVM })
+  @ApiCreatedResponse({ type: UserVM })
   @ApiBadRequestResponse({ type: ApiException })
   @ApiOperation(getOperationId(UserCreateVM.name, 'Create'))
-  public async create(@Body() vm: UserCreateVM): Promise<UserFindVM | any> {
+  public async create(@Body() vm: UserCreateVM) {
     const {
       username,
       password,
@@ -81,7 +82,7 @@ export class UserController extends BaseController {
 
     const newUser = await this.userService.register(vm);
 
-    return this.userService.map<UserFindVM>(newUser);
+    return this.userService.map(newUser);
   }
 
   @Post('login')
@@ -102,10 +103,10 @@ export class UserController extends BaseController {
   @Get('validate')
   @UseGuards(AuthGuard(AUTH_GUARD_TYPE))
   @ApiBearerAuth()
-  @ApiCreatedResponse({ type: UserFindVM })
+  @ApiCreatedResponse({ type: UserVM })
   @ApiBadRequestResponse({ type: ApiException })
   @ApiOperation(getOperationId(User.name, 'Validate'))
-  public validate(@Req() req: Request): Promise<UserFindVM> {
+  public validate(@Req() req: Request) {
     const headerValue = req.headers.authorization;
     const token = headerValue.split(' ').pop();
 
@@ -113,10 +114,10 @@ export class UserController extends BaseController {
   }
 
   @Get('confirm/:token')
-  @ApiCreatedResponse({ type: UserFindVM })
+  @ApiCreatedResponse({ type: UserVM })
   @ApiBadRequestResponse({ type: ApiException })
   @ApiOperation(getOperationId(User.name, 'Confirm'))
-  public async confirm(@Param('token') token: string): Promise<UserFindVM> {
+  public async confirm(@Param('token') token: string) {
     try {
       const verification = this.userService.jwtService.verify(token);
       const user = await this.userService.getUserByJwtPayload(verification);

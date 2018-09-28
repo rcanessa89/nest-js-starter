@@ -1,18 +1,17 @@
 import { Controller } from '@nestjs/common';
-import { baseControllerFactory } from '@base/base.controller';
-import { TodoService } from './todo.service';
+
 import { Todo } from '@entities/todo.entity';
-import { TodoCreateVM, TodoUpdateVM, TodoFindVM } from './todo.vm';
+import { baseControllerFactory } from '@base/base.controller';
 import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
+import { TodoService } from './todo.service';
+import { TodoVM } from './todo.vm';
 
-const BaseController = baseControllerFactory<Todo>(
-  Todo,
-  TodoCreateVM,
-  TodoUpdateVM,
-  TodoFindVM,
-  true,
-);
+const BaseController = baseControllerFactory<Todo, TodoVM>({
+  entity: Todo,
+  entityVm: TodoVM,
+  auth: false
+});
 
 @Controller('todo')
 export class TodoController extends BaseController {
@@ -20,5 +19,9 @@ export class TodoController extends BaseController {
     private readonly todoService: TodoService,
   ) {
     super(todoService);
+  }
+
+  public aftergetById(id, data) {
+    
   }
 }

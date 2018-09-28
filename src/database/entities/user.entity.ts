@@ -1,9 +1,10 @@
-import { Base } from '@modules/base/base.entity';
 import { Column, Entity } from 'typeorm';
 import { ApiModelProperty } from '@nestjs/swagger';
 
+import { BaseEntity } from '@modules/base/base.entity';
+
 @Entity()
-export class User extends Base {
+export class User extends BaseEntity {
   @Column({
     unique: true,
   })

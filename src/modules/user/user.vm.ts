@@ -1,6 +1,7 @@
 import { ApiModelProperty, ApiModelPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, Matches } from 'class-validator';
 import { PASSWORD_REGEX } from '@constants';
+import { User } from '@entities/user.entity';
 
 abstract class UserVMBase {
   @ApiModelProperty()
@@ -9,7 +10,7 @@ abstract class UserVMBase {
   username: string;
 }
 
-export class UserFindVM extends UserVMBase {
+export class UserVM extends UserVMBase {
   @ApiModelProperty()
   id: number;
 
@@ -24,6 +25,7 @@ export class UserFindVM extends UserVMBase {
 }
 
 export class UserCreateVM extends UserVMBase {
+
   @ApiModelProperty()
   @IsNotEmpty()
   @Matches(new RegExp(PASSWORD_REGEX), {
@@ -64,5 +66,5 @@ export class UserLogedVM {
   token: string;
 
   @ApiModelProperty()
-  user: UserFindVM;
+  user: UserVM;
 }

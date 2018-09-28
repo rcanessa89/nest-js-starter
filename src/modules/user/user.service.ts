@@ -4,10 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import { compare, genSalt, hash } from 'bcryptjs';
 import { sign as jwtSign } from 'jsonwebtoken';
+
 import { BaseService } from '@modules/base/base.service';
 import { User } from '@entities/user.entity';
 import { IJwtPayload } from '@modules/user/user.interface';
-import { UserCreateVM, UserLogedVM, UserFindVM, UserCredentialsVM } from '@modules/user/user.vm';
+import { UserCreateVM, UserLogedVM, UserVM, UserCredentialsVM } from '@modules/user/user.vm';
 import { PASSWORD_SALT } from '@constants';
 import { getEnvConfig } from '@utils/get-env-config';
 import { Configuration } from '@enums/configuration';
@@ -22,7 +23,7 @@ export class UserService extends BaseService<User> {
     private readonly userRepository: Repository<User>,
     private readonly emailService: EmailService,
   ) {
-    super(userRepository);
+    super(userRepository, UserService.configureMaping);
   }
 
   public createToken(id: number): string {
@@ -43,13 +44,13 @@ export class UserService extends BaseService<User> {
     return this.getUserByJwtPayload(payload);
   }
 
-  public async getUserByJwtPayload(payload: IJwtPayload): Promise<UserFindVM> {
+  public async getUserByJwtPayload(payload: IJwtPayload) {
     const user = await this.findById(payload.id);
 
-    return this.map<UserFindVM>(user);
+    return this.map(user);
   }
 
-  public async register(data: UserCreateVM): Promise<UserFindVM> {
+  public async register(data: UserCreateVM) {
     const salt = await genSalt(PASSWORD_SALT);
     const password = await hash(data.password, salt);
     const newUsername = data.username.toLowerCase();
@@ -66,14 +67,14 @@ export class UserService extends BaseService<User> {
 
       this.sendConfirmationEmail(newUsername, token);
 
-      return await this.map<UserFindVM>(user);
+      return await this.map(user);
 
     } catch (e) {
       throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  public async login(vm: UserCredentialsVM): Promise<UserLogedVM> {
+  public async login(vm: UserCredentialsVM) {
     const username = vm.username.toLowerCase();
     const filter = { username };
     const user = await this.findOne(filter);
@@ -93,12 +94,15 @@ export class UserService extends BaseService<User> {
     }
 
     const token = this.createToken(user.id);
-    const userVm: UserFindVM = await this.map<UserFindVM>(user);
+    const userData = this.map(user)
+      .then(user => {
+        return {
+          token,
+          user: userData,
+        }; 
+      });
 
-    return {
-      token,
-      user: userVm,
-    };
+    return userData;
   }
 
   private sendConfirmationEmail(email: string, token: string): void {
@@ -111,9 +115,8 @@ export class UserService extends BaseService<User> {
     this.emailService.send(email, subject, html);
   }
 
-  protected configureMapper(config: AutoMapperJs.IConfiguration): void {
+  private static configureMaping(config: AutoMapperJs.ICreateMapFluentFunctions): void {
     config
-      .createMap('User', 'UserVM')
       .forSourceMember('password', opts => opts.ignore());
   }
 }

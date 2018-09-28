@@ -1,9 +1,10 @@
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 import { ApiModelProperty } from '@nestjs/swagger';
-import { Base } from '@base/base.entity';
+
+import { BaseEntity } from '@base/base.entity';
 
 @Entity()
-export class Todo extends Base {
+export class Todo extends BaseEntity {
   @Column()
   @ApiModelProperty()
   description: string;

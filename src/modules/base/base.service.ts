@@ -6,13 +6,23 @@ import { IBaseService } from './base.interface';
 import { MapperService } from '@services/mapper/mapper.service';
 
 export abstract class BaseService<T> implements IBaseService<T> {
+  public withMap: boolean;
+  private readonly mapping: (config: AutoMapperJs.ICreateMapFluentFunctions) => void;
   protected readonly repository: Repository<T>;
   protected readonly mapper: AutoMapperJs.AutoMapper;
 
-  constructor(repository: Repository<T>) {
+  constructor(
+    repository: Repository<T>,
+    mapping: (config: AutoMapperJs.ICreateMapFluentFunctions) => void = null,
+  ) {
     this.repository = repository;
+    this.withMap = !!mapping;
+    this.mapping = mapping;
     this.mapper = automapper;
-    this.initializeMapper();
+    
+    if (this.withMap) {
+      this.initializeMapper();
+    }
   }
 
   public async find(filter: FindManyOptions<T> & FindConditions<T> = {}): Promise<T[]> {
@@ -51,12 +61,8 @@ export abstract class BaseService<T> implements IBaseService<T> {
     return this.repository.count();
   }
 
-  public async map<K>(
-    object: Partial<T> | Partial<T>[],
-    sourceKey: string = this.modelName,
-    destinationKey: string = this.viewModelName,
-  ): Promise<K> {
-    return this.mapper.map(sourceKey, destinationKey, object);
+  public async map(object: T | Partial<T>): Promise<Partial<T>> {
+    return this.mapper.map(this.modelName, this.viewModelName, object);
   }
 
   private get modelName(): string {
@@ -72,8 +78,9 @@ export abstract class BaseService<T> implements IBaseService<T> {
   }
 
   private initializeMapper(): void {
-    this.mapper.initialize(this.configureMapper);
-  }
+    const createMapConfig = this.mapper
+      .createMap(this.modelName, this.viewModelName);
 
-  protected abstract configureMapper(config: AutoMapperJs.IConfiguration): void;
+    this.mapping(createMapConfig);
+  }
 }
