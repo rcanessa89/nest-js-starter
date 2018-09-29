@@ -1,5 +1,15 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleNameMapper": {
+    "@constants": "<rootDir>/../src/app.constants",
+    "@utils/(.*)": "<rootDir>/../src/utils/$1",
+    "@enums/(.*)": "<rootDir>/../src/enums/$1",
+    "@modules/(.*)": "<rootDir>/../src/modules/$1",
+    "@models/(.*)": "<rootDir>/../src/models/$1",
+    "@base/(.*)": "<rootDir>/../src/modules/base/$1",
+    "@services/(.*)": "<rootDir>/../src/services/$1",
+    "@entities/(.*)": "<rootDir>/../src/database/entities/$1"
+  },
   "rootDir": ".",
   "testRegex": ".e2e-spec.ts$",
   "transform": {

@@ -67,14 +67,13 @@ export class UserService extends BaseService<User> {
 
       this.sendConfirmationEmail(newUsername, token);
 
-      return await this.map(user);
-
+      return this.map(user);
     } catch (e) {
       throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  public async login(vm: UserCredentialsVM) {
+  public async login(vm: UserCredentialsVM): Promise<UserLogedVM> {
     const username = vm.username.toLowerCase();
     const filter = { username };
     const user = await this.findOne(filter);
@@ -94,22 +93,22 @@ export class UserService extends BaseService<User> {
     }
 
     const token = this.createToken(user.id);
-    const userData = this.map(user)
-      .then(user => {
-        return {
+    const loggedUser = this.map(user)
+      .then(userMapped => {
+        return new UserLogedVM({
           token,
-          user: userData,
-        }; 
+          user: userMapped,
+        });
       });
 
-    return userData;
+    return loggedUser;
   }
 
   private sendConfirmationEmail(email: string, token: string): void {
     const subject = 'Email registration';
     const host = getEnvConfig(Configuration.HOST);
     const port = isDev() ? `:${getEnvConfig(Configuration.PORT)}` : '';
-    const url = `${host}${port}/confirm/${token}`;
+    const url = `${host}${port}/api/user/confirm/${token}`;
     const html = `<div><a href=${url}>Go to ${url}</a></div>`;
 
     this.emailService.send(email, subject, html);

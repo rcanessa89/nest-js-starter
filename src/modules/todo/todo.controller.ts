@@ -10,7 +10,7 @@ import { TodoVM } from './todo.vm';
 const BaseController = baseControllerFactory<Todo, TodoVM>({
   entity: Todo,
   entityVm: TodoVM,
-  auth: false
+  auth: false,
 });
 
 @Controller('todo')
@@ -19,9 +19,5 @@ export class TodoController extends BaseController {
     private readonly todoService: TodoService,
   ) {
     super(todoService);
-  }
-
-  public aftergetById(id, data) {
-    
   }
 }

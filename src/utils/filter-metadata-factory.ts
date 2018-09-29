@@ -1,9 +1,9 @@
-import "reflect-metadata";
+import 'reflect-metadata';
 
 export const filterMetadata = (
   TypeClass: { new(): any },
   metadataKey: string,
-  excludedValues: string[]
+  excludedValues: string[],
 ) => {
   class CloneTypeClass extends TypeClass {}
 

@@ -38,7 +38,7 @@ const BaseController = baseControllerFactory<User>({
   entityVm: UserVM,
   entityCreateVm: UserCreateVM,
   entityUpdateVm: UserUpdateVM,
-  auth: true
+  auth: true,
 });
 
 @Controller('user')
@@ -77,12 +77,10 @@ export class UserController extends BaseController {
     }
 
     if (exist) {
-      throw new HttpException(`${username} exists`, HttpStatus.BAD_REQUEST);
+      throw new HttpException(`${username} exist`, HttpStatus.BAD_REQUEST);
     }
 
-    const newUser = await this.userService.register(vm);
-
-    return this.userService.map(newUser);
+    return this.userService.register(vm);
   }
 
   @Post('login')

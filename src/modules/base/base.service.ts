@@ -19,7 +19,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
     this.withMap = !!mapping;
     this.mapping = mapping;
     this.mapper = automapper;
-    
+
     if (this.withMap) {
       this.initializeMapper();
     }

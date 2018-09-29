@@ -62,6 +62,10 @@ export class UserCredentialsVM {
 }
 
 export class UserLogedVM {
+  constructor(data = {}) {
+    Object.assign(this, data);
+  }
+
   @ApiModelProperty()
   token: string;
 

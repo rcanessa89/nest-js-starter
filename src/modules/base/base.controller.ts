@@ -24,7 +24,6 @@ import {
   ApiUseTags,
   ApiResponse,
   ApiBearerAuth,
-  ApiModelProperty
 } from '@nestjs/swagger';
 import {
   UpdateResult,
@@ -34,7 +33,7 @@ import {
 } from 'typeorm';
 import { AuthGuard } from '@nestjs/passport';
 
-import { ConditionalDecorator } from '@utils/conditional-decorator';;
+import { ConditionalDecorator } from '@utils/conditional-decorator';
 import { AUTH_GUARD_TYPE } from '@constants';
 import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
@@ -47,8 +46,8 @@ import { IDefaultAuthObj, IBaseControllerFactoryOpts } from './base.interface';
 const metadataKey = 'swagger/apiModelPropertiesArray';
 const excludedMetadata = [':id', ':createdAt', ':updatedAt'];
 
-export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Partial<T>> (
-  options: IBaseControllerFactoryOpts<T>
+export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Partial<T>>(
+  options: IBaseControllerFactoryOpts<T>,
 ) {
   const Entity = options.entity;
   const EntityVM = options.entityVm;
@@ -172,7 +171,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     public async create(@Body() body: C): Promise<T | Partial<T>> {
       try {
         this.beforeCreate(body);
-        
+
         const dataPromise = this.service.create(body);
         const data = await dataPromise;
 
@@ -211,7 +210,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
       if (!entity) {
         try {
           this.beforeUpdateOrCreate(body);
-        
+
           const dataPromise = this.service.create(body);
           const data = await dataPromise;
 
@@ -262,7 +261,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     public async update(@Body() body: { id: string | number } & U): Promise<UpdateResult> {
       try {
         this.beforeUpdate(body);
-        
+
         const dataPromise = this.service.update(body.id, body);
         const data = await dataPromise;
 

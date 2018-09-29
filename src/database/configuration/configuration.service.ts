@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
+
 import { Configuration } from '@enums/configuration';
-import { get } from 'config';
 import { getEnvConfig } from '@utils/get-env-config';
 
 @Injectable()

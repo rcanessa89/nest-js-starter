@@ -5,6 +5,12 @@ import { BaseEntity } from '@modules/base/base.entity';
 
 @Entity()
 export class User extends BaseEntity {
+  constructor(user: Partial<User> = {}) {
+    super();
+
+    Object.assign(this, user);
+  }
+
   @Column({
     unique: true,
   })

@@ -8,5 +8,5 @@ export abstract class BaseVM {
   createdAt: string;
 
   @ApiModelProperty({ type: String, format: 'date-time' })
-  updatedAt: string;  
+  updatedAt: string;
 }
