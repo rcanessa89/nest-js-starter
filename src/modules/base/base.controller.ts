@@ -106,9 +106,9 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.count, ApiBearerAuth())
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Count'))
-    public count(): Promise<number> {
+    public async count(): Promise<number> {
       try {
-        this.beforeCount();
+        await this.beforeCount();
 
         const count = this.service.count();
 
@@ -133,7 +133,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'FindById'))
     public async getById(@Param('id') id: string | number): Promise<T | Partial<T>> {
       try {
-        this.beforeGetById(id);
+        await this.beforeGetById(id);
 
         const dataPromise = this.service.findById(id);
         const data = await dataPromise;
@@ -170,7 +170,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'Create'))
     public async create(@Body() body: C): Promise<T | Partial<T>> {
       try {
-        this.beforeCreate(body);
+        await this.beforeCreate(body);
 
         const dataPromise = this.service.create(body);
         const data = await dataPromise;
@@ -209,7 +209,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
 
       if (!entity) {
         try {
-          this.beforeUpdateOrCreate(body);
+          await this.beforeUpdateOrCreate(body);
 
           const dataPromise = this.service.create(body);
           const data = await dataPromise;
@@ -232,7 +232,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
       }
 
       try {
-        this.beforeUpdateOrCreate(body);
+        await this.beforeUpdateOrCreate(body);
 
         const dataPromise = this.service.update(body.id, body);
         const data = await dataPromise;
@@ -260,7 +260,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'Update'))
     public async update(@Body() body: { id: string | number } & U): Promise<UpdateResult> {
       try {
-        this.beforeUpdate(body);
+        await this.beforeUpdate(body);
 
         const dataPromise = this.service.update(body.id, body);
         const data = await dataPromise;
@@ -285,7 +285,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'Delete'))
     public async delete(@Param('id') id: string | number): Promise<DeleteResult> {
       try {
-        this.beforeDelete(id);
+        await this.beforeDelete(id);
 
         const dataPromise = this.service.delete(id);
         const data = await dataPromise;
