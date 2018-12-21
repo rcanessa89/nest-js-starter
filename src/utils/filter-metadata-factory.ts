@@ -10,10 +10,9 @@ export const filterMetadata = (
 
   const metadata: string[] = Reflect.getMetadata(metadataKey, CloneTypeClass.prototype) || [];
   const metadataFiltered = metadata.filter(item => excludedValues.indexOf(item) === -1);
+  const className: string = name ? name : TypeClass.name;
 
   Reflect.defineMetadata(metadataKey, metadataFiltered, CloneTypeClass.prototype);
-
-  const className: string = name ? name : TypeClass.name;
 
   Object.defineProperty(CloneTypeClass, 'name', {
     value: className
