@@ -39,20 +39,29 @@ import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
 import { filterMetadata } from '@utils/filter-metadata-factory';
 import { BaseService } from './base.service';
-import { BaseEntity } from './base.entity';
 import { getAuthObj, defaultAuthObj } from './base.utils';
 import { IDefaultAuthObj, IBaseControllerFactoryOpts } from './base.interface';
 
 const metadataKey = 'swagger/apiModelPropertiesArray';
 const excludedMetadata = [':id', ':createdAt', ':updatedAt'];
 
+const formatEntityName = (entity: { new(): any }, create = true) => {
+  if (create) {
+    return entity.name.replace('VM', 'CreateVM');
+  }
+
+  return entity.name.replace('VM', 'UpdateVM');
+};
+
 export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Partial<T>>(
   options: IBaseControllerFactoryOpts<T>,
 ) {
   const Entity = options.entity;
   const EntityVM = options.entityVm;
-  const EntityCreateVM = options.entityCreateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata);
-  const EntityUpdateVM = options.entityUpdateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata);
+  const createEntityName: string = options.entityCreateVm ? options.entityCreateVm.name : formatEntityName(EntityVM);
+  const updateEntityName: string = options.entityUpdateVm ? options.entityUpdateVm.name : formatEntityName(EntityVM, false);
+  const EntityCreateVM = options.entityCreateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata, createEntityName);
+  const EntityUpdateVM = options.entityUpdateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata, updateEntityName);
   const auth = getAuthObj(options.auth);
 
   @ApiUseTags(Entity.name)
@@ -255,7 +264,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
       required: true,
       isArray: false,
     })
-    @ApiOkResponse({ type: Entity })
+    @ApiOkResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Update'))
     public async update(@Body() body: { id: string | number } & U): Promise<UpdateResult> {
