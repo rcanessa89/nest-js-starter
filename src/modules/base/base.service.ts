@@ -1,7 +1,7 @@
 import 'automapper-ts/dist/automapper';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindManyOptions, FindConditions, DeleteResult, UpdateResult } from 'typeorm';
+import { Repository, FindConditions, DeleteResult, UpdateResult } from 'typeorm';
 import { IBaseService } from './base.interface';
 import { MapperService } from '@services/mapper/mapper.service';
 
@@ -39,8 +39,8 @@ export abstract class BaseService<T> implements IBaseService<T> {
     }
   }
 
-  public async find(filter: FindManyOptions<T> & FindConditions<T> = {}): Promise<T[]> {
-    return this.repository.find(filter);
+  public async find(filter = {}): Promise<T[]> {
+    return this.repository.find({ ...filter, cache: this.cache.find  });
   }
 
   public async findById(id: string | number): Promise<T> {
@@ -50,11 +50,11 @@ export abstract class BaseService<T> implements IBaseService<T> {
       throw new HttpException('ID invalid', HttpStatus.BAD_REQUEST);
     }
 
-    return this.repository.findOne(parsedId);
+    return this.repository.findOne(parsedId,{ cache: this.cache.findById });
   }
 
   public async findOne(filter: FindConditions<T>): Promise<T> {
-    return this.repository.findOne(filter);
+    return this.repository.findOne(filter, { cache: this.cache.findOne });
   }
 
   // item param type should be type T but there is an issue with third party library.
