@@ -64,6 +64,16 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
   const EntityUpdateVM = options.entityUpdateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata, updateEntityName);
   const auth = getAuthObj(options.auth);
 
+  class EntityCreateBody extends EntityCreateVM {}
+  class EntityUpdateBody extends EntityUpdateVM {}
+
+  Object.defineProperty(EntityCreateBody, 'name', {
+    value: EntityCreateVM.name
+  });
+  Object.defineProperty(EntityUpdateBody, 'name', {
+    value: EntityUpdateVM.name
+  });
+
   @ApiUseTags(Entity.name)
   abstract class BaseController {
     protected readonly service: BaseService<T>;
@@ -169,7 +179,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.create, ApiBearerAuth())
     @ApiImplicitBody({
       name: EntityCreateVM.name,
-      type: EntityCreateVM,
+      type: EntityCreateBody,
       description: 'Data for entity creation',
       required: true,
       isArray: false,
@@ -177,7 +187,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiCreatedResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Create'))
-    public async create(@Body() body: C): Promise<T | Partial<T>> {
+    public async create(@Body() body: EntityCreateBody): Promise<T | Partial<T>> {
       try {
         await this.beforeCreate(body);
 
@@ -205,15 +215,15 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.updateOrCreate, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.updateOrCreate, ApiBearerAuth())
     @ApiImplicitBody({
-      name: EntityUpdateVM.name,
-      type: EntityUpdateVM,
+      name: EntityUpdateBody.name,
+      type: EntityUpdateBody,
       description: 'Data for entity update or create',
       required: true,
       isArray: false,
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'UpdateOrCreate'))
-    public async updateOrCreate(@Body() body: { id: string | number } & U): Promise<UpdateResult | T | Partial<T>> {
+    public async updateOrCreate(@Body() body: EntityUpdateBody): Promise<UpdateResult | T | Partial<T>> {
       const entity = await this.service.findById(body.id);
 
       if (!entity) {
@@ -258,8 +268,8 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.update, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.update, ApiBearerAuth())
     @ApiImplicitBody({
-      name: EntityUpdateVM.name,
-      type: EntityUpdateVM,
+      name: EntityUpdateBody.name,
+      type: EntityUpdateBody,
       description: 'Data for entity update',
       required: true,
       isArray: false,
@@ -267,7 +277,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOkResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Update'))
-    public async update(@Body() body: { id: string | number } & U): Promise<UpdateResult> {
+    public async update(@Body() body: EntityUpdateBody): Promise<UpdateResult> {
       try {
         await this.beforeUpdate(body);
 
@@ -317,14 +327,14 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     protected beforeGetById(i: string | number): void {}
     protected aftergetById(i: string | number, d: T, m?: Partial<T>): void {}
 
-    protected beforeCreate(b: C): void {}
-    protected afterCreate(b: C, d: T, m?: Partial<T>): void {}
+    protected beforeCreate(b: EntityCreateBody): void {}
+    protected afterCreate(b: EntityCreateBody, d: T, m?: Partial<T>): void {}
 
-    protected beforeUpdateOrCreate(b: { id: string | number } & U): void {}
-    protected afterUpdateOrCreate(b: { id: string | number } & U, d: T | UpdateResult, m?: Partial<T> | UpdateResult): void {}
+    protected beforeUpdateOrCreate(b: EntityUpdateBody): void {}
+    protected afterUpdateOrCreate(b: EntityUpdateBody, d: T | UpdateResult, m?: Partial<T> | UpdateResult): void {}
 
-    protected beforeUpdate(b: { id: string | number } & U): void {}
-    protected afterUpdate(b: { id: string | number } & U, d: UpdateResult): void {}
+    protected beforeUpdate(b: EntityUpdateBody): void {}
+    protected afterUpdate(b: EntityUpdateBody, d: UpdateResult): void {}
 
     protected beforeDelete(i: string | number): void {}
     protected afterDelete(i: string | number, d: DeleteResult): void {}
