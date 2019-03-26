@@ -39,19 +39,16 @@ import { ApiException } from '@models/api-exception.model';
 import { getOperationId } from '@utils/get-operation-id';
 import { filterMetadata } from '@utils/filter-metadata-factory';
 import { BaseService } from './base.service';
-import { getAuthObj, defaultAuthObj } from './base.utils';
-import { IDefaultAuthObj, IBaseControllerFactoryOpts } from './base.interface';
+import { getAuthObj, defaultAuthObj, formatEntityName } from './base.utils';
+import {
+  IDefaultAuthObj,
+  IBaseControllerFactoryOpts,
+  IPaginationQuery,
+  IFindAndCountResult
+} from './base.interface';
 
 const metadataKey = 'swagger/apiModelPropertiesArray';
 const excludedMetadata = [':id', ':createdAt', ':updatedAt'];
-
-const formatEntityName = (entity: { new(): any }, create = true) => {
-  if (create) {
-    return entity.name.replace('VM', 'CreateVM');
-  }
-
-  return entity.name.replace('VM', 'UpdateVM');
-};
 
 export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Partial<T>>(
   options: IBaseControllerFactoryOpts<T>,
@@ -134,6 +131,73 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
         this.afterCount(count);
 
         return count;
+      } catch (e) {
+        throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
+
+    @Get('pagination')
+    @ConditionalDecorator(auth.pagination, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
+    @ConditionalDecorator(auth.pagination, ApiBearerAuth())
+    @ApiImplicitQuery({
+      name: 'pageSize',
+      description: 'Page size',
+      required: false,
+      isArray: false,
+    })
+    @ApiImplicitQuery({
+      name: 'pageNumber',
+      description: 'Page number',
+      required: false,
+      isArray: false,
+    })
+    @ApiImplicitQuery({
+      name: 'filter',
+      description: 'TypeORM find query',
+      required: false,
+      isArray: false,
+    })
+    @ApiOkResponse({
+      type: EntityVM,
+      isArray: true,
+    })
+    @ApiBadRequestResponse({ type: ApiException })
+    public async pagination(@Query() query: IPaginationQuery): Promise<IFindAndCountResult<T>> {
+      try {
+        const {
+          pageSize,
+          pageNumber,
+          filter
+        } = query;
+        const parsedFilter = filter ? JSON.parse(filter) : {};
+        const pasedQuery = {
+          pageSize,
+          pageNumber,
+          filter: parsedFilter
+        };
+        const dataPromise = this.service.findAndCount(pageSize, pageNumber, parsedFilter);
+        const data = await dataPromise;
+
+        if (this.service.withMap) {
+          const mappedDataPromise = Promise.all(data.data.map(item => this.service.map(item)));
+          const mappedData = await mappedDataPromise;
+
+          this.afterPagination(
+            pasedQuery,
+            { data: data.data, count: data.count, total: data.total },
+            { data: mappedData, count: data.count, total: data.total }
+          );
+
+          return {
+            data: mappedData,
+            count: data.count,
+            total: data.total
+          };
+        }
+
+        this.afterPagination(parsedFilter, data);
+
+        return dataPromise;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -326,6 +390,8 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
 
     protected beforeGetById(i: string | number): void {}
     protected aftergetById(i: string | number, d: T, m?: Partial<T>): void {}
+
+    protected afterPagination(q: IPaginationQuery, d: IFindAndCountResult<T>, md?: IFindAndCountResult<T>): void {}
 
     protected beforeCreate(b: EntityCreateBody): void {}
     protected afterCreate(b: EntityCreateBody, d: T, m?: Partial<T>): void {}

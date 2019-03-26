@@ -1,20 +1,22 @@
 import 'automapper-ts/dist/automapper';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindConditions, DeleteResult, UpdateResult } from 'typeorm';
-import { IBaseService } from './base.interface';
+import {
+  Repository,
+  FindConditions,
+  DeleteResult,
+  UpdateResult,
+  FindManyOptions,
+  FindOneOptions
+} from 'typeorm';
+
+import {
+  IBaseService,
+  IFindAndCountResult,
+  IBaseServiceCache,
+  IBaseServiceOptions
+} from './base.interface';
 import { MapperService } from '@services/mapper/mapper.service';
-
-export interface IBaseServiceCache {
-  find: boolean;
-  findById: boolean;
-  findOne: boolean;
-}
-
-export interface IBaseServiceOptions {
-  cache?: IBaseServiceCache | boolean;
-  mapping?: (config: AutoMapperJs.ICreateMapFluentFunctions) => void;
-}
 
 export abstract class BaseService<T> implements IBaseService<T> {
   public withMap: boolean;
@@ -39,7 +41,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
     }
   }
 
-  public async find(filter = {}): Promise<T[]> {
+  public async find(filter: FindManyOptions<T> = {}): Promise<T[]> {
     return this.repository.find({ ...filter, cache: this.cache.find  });
   }
 
@@ -53,8 +55,25 @@ export abstract class BaseService<T> implements IBaseService<T> {
     return this.repository.findOne(parsedId,{ cache: this.cache.findById });
   }
 
-  public async findOne(filter: FindConditions<T>): Promise<T> {
-    return this.repository.findOne(filter, { cache: this.cache.findOne });
+  public async findOne(conditions: FindConditions<T>, options: FindOneOptions<T> = {}): Promise<T> {
+    return this.repository.findOne(conditions, { ...options, cache: this.cache.findOne });
+  }
+
+  public async findAndCount(pageSize: number = 30, pageNumber: number = 1, filter: FindManyOptions<T>): Promise<IFindAndCountResult<T>> {
+    const skip = pageSize * (pageNumber - 1);
+
+    const [ result, total ] = await this.repository.findAndCount({
+      ...filter,
+      cache: this.cache.findAndCount,
+      take: pageSize,
+      skip
+    });
+
+    return {
+      data: result,
+      count: result.length,
+      total
+    };
   }
 
   // item param type should be type T but there is an issue with third party library.
@@ -103,7 +122,8 @@ export abstract class BaseService<T> implements IBaseService<T> {
       this.cache = {
         find: false,
         findById: false,
-        findOne: false
+        findOne: false,
+        findAndCount: false
       };
     }
 
@@ -111,7 +131,8 @@ export abstract class BaseService<T> implements IBaseService<T> {
       this.cache = {
         find: true,
         findById: true,
-        findOne: true
+        findOne: true,
+        findAndCount: true
       };
     }
 

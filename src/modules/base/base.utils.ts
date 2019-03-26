@@ -10,6 +10,7 @@ export const defaultAuthObj: IDefaultAuthObj = {
   updateOrCreate: true,
   delete: true,
   count: true,
+  pagination: true
 };
 
 export const getAuthObj = (authObj: IDefaultAuthObj | boolean): IDefaultAuthObj => {
@@ -17,7 +18,7 @@ export const getAuthObj = (authObj: IDefaultAuthObj | boolean): IDefaultAuthObj 
 
   if (authObj === true) {
     auth = defaultAuthObj;
-  } else if (authObj === false) {
+  } else if (!authObj) {
     auth = {
       root: false,
       getById: false,
@@ -26,6 +27,7 @@ export const getAuthObj = (authObj: IDefaultAuthObj | boolean): IDefaultAuthObj 
       updateOrCreate: false,
       delete: false,
       count: false,
+      pagination: false
     };
   } else {
     auth = {
@@ -35,4 +37,12 @@ export const getAuthObj = (authObj: IDefaultAuthObj | boolean): IDefaultAuthObj 
   }
 
   return auth;
+};
+
+export const formatEntityName = (entity: { new(): any }, create = true) => {
+  if (create) {
+    return entity.name.replace('VM', 'CreateVM');
+  }
+
+  return entity.name.replace('VM', 'UpdateVM');
 };
