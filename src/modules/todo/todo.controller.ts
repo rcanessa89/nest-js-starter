@@ -7,7 +7,7 @@ import { getOperationId } from '@utils/get-operation-id';
 import { TodoService } from './todo.service';
 import { TodoVM } from './todo.vm';
 
-const BaseController = baseControllerFactory<Todo, TodoVM>({
+const BaseController = baseControllerFactory<Todo>({
   entity: Todo,
   entityVm: TodoVM,
   auth: false,

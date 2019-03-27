@@ -1,3 +1,4 @@
+/* tslint:disable:no-string-literal */
 import {
   Body,
   Delete,
@@ -12,6 +13,7 @@ import {
   Query,
   UseGuards,
   NotFoundException,
+  Response
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -44,13 +46,14 @@ import {
   IDefaultAuthObj,
   IBaseControllerFactoryOpts,
   IPaginationQuery,
-  IFindAndCountResult
+  IFindAndCountResult,
+  IBaseController
 } from './base.interface';
 
 const metadataKey = 'swagger/apiModelPropertiesArray';
 const excludedMetadata = [':id', ':createdAt', ':updatedAt'];
 
-export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Partial<T>>(
+export function baseControllerFactory<T>(
   options: IBaseControllerFactoryOpts<T>,
 ) {
   const Entity = options.entity;
@@ -61,13 +64,13 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
   const EntityUpdateVM = options.entityUpdateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata, updateEntityName);
   const auth = getAuthObj(options.auth);
 
-  class EntityCreateBody extends EntityCreateVM {}
-  class EntityUpdateBody extends EntityUpdateVM {}
+  class EntityCreateVMT extends EntityCreateVM {}
+  class EntityUpdateVMT extends EntityUpdateVM {}
 
-  Object.defineProperty(EntityCreateBody, 'name', {
+  Object.defineProperty(EntityCreateVMT, 'name', {
     value: EntityCreateVM.name
   });
-  Object.defineProperty(EntityUpdateBody, 'name', {
+  Object.defineProperty(EntityUpdateVMT, 'name', {
     value: EntityUpdateVM.name
   });
 
@@ -94,24 +97,31 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Find'))
-    public async root(@Query('filter') filter: string): Promise<T[] | Partial<T>[]> {
+    public async root(@Query('filter') filter: string, @Response() response) {
+      const parsedFilter = filter ? JSON.parse(filter) : {};
+
+      if (this['beforeRoot']) {
+        await this['beforeRoot'](parsedFilter);
+      }
+
       try {
-        const parsedFilter = filter ? JSON.parse(filter) : {};
-        const dataPromise = this.service.find(parsedFilter);
-        const data = await dataPromise;
+        const data = await this.service.find(parsedFilter);
 
         if (this.service.withMap) {
-          const mappedDataPromise = Promise.all(data.map(item => this.service.map(item)));
-          const mappedData = await mappedDataPromise;
+          const mappedData = await Promise.all(data.map(item => this.service.map(item)));
 
-          this.afterRoot(parsedFilter, data, mappedData);
+          response.send(mappedData);
 
-          return mappedDataPromise;
+          if (this['afterRoot']) {
+            this['afterRoot'](parsedFilter, data, mappedData);
+          }
+        } else {
+          response.send(data);
         }
 
-        this.afterRoot(parsedFilter, data);
-
-        return dataPromise;
+        if (this['afterRoot']) {
+          this['afterRoot'](parsedFilter, data);
+        }
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -124,11 +134,15 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'Count'))
     public async count(): Promise<number> {
       try {
-        await this.beforeCount();
+        if (this['beforeCount']) {
+          await this['beforeCount']();
+        }
 
         const count = this.service.count();
 
-        this.afterCount(count);
+        if (this['afterCount']) {
+          await this['afterCount'](count);
+        }
 
         return count;
       } catch (e) {
@@ -175,18 +189,23 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
           pageNumber,
           filter: parsedFilter
         };
-        const dataPromise = this.service.findAndCount(pageSize, pageNumber, parsedFilter);
-        const data = await dataPromise;
+
+        if (this['beforePagination']) {
+          await this['beforePagination'](pasedQuery);
+        }
+
+        const data = await this.service.findAndCount(pageSize, pageNumber, parsedFilter);
 
         if (this.service.withMap) {
-          const mappedDataPromise = Promise.all(data.data.map(item => this.service.map(item)));
-          const mappedData = await mappedDataPromise;
+          const mappedData = await Promise.all(data.data.map(item => this.service.map(item)));
 
-          this.afterPagination(
-            pasedQuery,
-            { data: data.data, count: data.count, total: data.total },
-            { data: mappedData, count: data.count, total: data.total }
-          );
+          if (this['afterPagination']) {
+            await this['afterPagination'](
+              pasedQuery,
+              { data: data.data, count: data.count, total: data.total },
+              { data: mappedData, count: data.count, total: data.total }
+            );
+          }
 
           return {
             data: mappedData,
@@ -195,9 +214,11 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
           };
         }
 
-        this.afterPagination(parsedFilter, data);
+        if (this['afterPagination']) {
+          await this['afterPagination'](parsedFilter, data);
+        }
 
-        return dataPromise;
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -216,23 +237,27 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'FindById'))
     public async getById(@Param('id') id: string | number): Promise<T | Partial<T>> {
       try {
-        await this.beforeGetById(id);
-
-        const dataPromise = this.service.findById(id);
-        const data = await dataPromise;
-
-        if (this.service.withMap) {
-          const mappedDataPromise = this.service.map(data);
-          const mappedData = await mappedDataPromise;
-
-          this.aftergetById(id, data, mappedData);
-
-          return mappedDataPromise;
+        if (this['beforeGetById']) {
+          await this['beforeGetById'](id);
         }
 
-        this.aftergetById(id, data);
+        const data = await this.service.findById(id);
 
-        return dataPromise;
+        if (this.service.withMap) {
+          const mappedData = await this.service.map(data);
+
+          if (this['aftergetById']) {
+            await this['aftergetById'](id, data, mappedData);
+          }
+
+          return mappedData;
+        }
+
+        if (this['aftergetById']) {
+          await this['aftergetById'](id, data);
+        }
+
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -243,7 +268,7 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.create, ApiBearerAuth())
     @ApiImplicitBody({
       name: EntityCreateVM.name,
-      type: EntityCreateBody,
+      type: EntityCreateVMT,
       description: 'Data for entity creation',
       required: true,
       isArray: false,
@@ -251,25 +276,29 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiCreatedResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Create'))
-    public async create(@Body() body: EntityCreateBody): Promise<T | Partial<T>> {
+    public async create(@Body() body: EntityCreateVMT): Promise<T | Partial<T>> {
       try {
-        await this.beforeCreate(body);
-
-        const dataPromise = this.service.create(body);
-        const data = await dataPromise;
-
-        if (this.service.withMap) {
-          const mappedDataPromise = this.service.map(data);
-          const mappedData = await mappedDataPromise;
-
-          this.afterCreate(body, data, mappedData);
-
-          return mappedDataPromise;
+        if (this['beforeCreate']) {
+          await this['beforeCreate'](body);
         }
 
-        this.afterCreate(body, data);
+        const data = await this.service.create(body);
 
-        return dataPromise;
+        if (this.service.withMap) {
+          const mappedData = await this.service.map(data);
+
+          if (this['afterCreate']) {
+            await this['afterCreate'](body, data, mappedData);
+          }
+
+          return mappedData;
+        }
+
+        if (this['afterCreate']) {
+          await this['afterCreate'](body, data);
+        }
+
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -279,50 +308,57 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.updateOrCreate, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.updateOrCreate, ApiBearerAuth())
     @ApiImplicitBody({
-      name: EntityUpdateBody.name,
-      type: EntityUpdateBody,
+      name: EntityUpdateVMT.name,
+      type: EntityUpdateVMT,
       description: 'Data for entity update or create',
       required: true,
       isArray: false,
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'UpdateOrCreate'))
-    public async updateOrCreate(@Body() body: EntityUpdateBody): Promise<UpdateResult | T | Partial<T>> {
+    public async updateOrCreate(@Body() body: EntityUpdateVMT): Promise<UpdateResult | T | Partial<T>> {
       const entity = await this.service.findById(body.id);
 
       if (!entity) {
         try {
-          await this.beforeUpdateOrCreate(body);
-
-          const dataPromise = this.service.create(body);
-          const data = await dataPromise;
-
-          if (this.service.withMap) {
-            const mappedDataPromise = this.service.map(data);
-            const mappedData = await mappedDataPromise;
-
-            this.afterUpdateOrCreate(body, data, mappedData);
-
-            return mappedDataPromise;
+          if (this['beforeUpdateOrCreate']) {
+            await this['beforeUpdateOrCreate'](body);
           }
 
-          this.afterUpdateOrCreate(body, data);
+          const data = await this.service.create(body);
 
-          return dataPromise;
+          if (this.service.withMap) {
+            const mappedData = await this.service.map(data);
+
+            if (this['afterUpdateOrCreate']) {
+              await this['afterUpdateOrCreate'](body, data, mappedData);
+            }
+
+            return mappedData;
+          }
+
+          if (this['afterUpdateOrCreate']) {
+            await this['afterUpdateOrCreate'](body, data);
+          }
+
+          return data;
         } catch (e) {
           throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
         }
       }
 
       try {
-        await this.beforeUpdateOrCreate(body);
+        if (this['beforeUpdateOrCreate']) {
+          await this['beforeUpdateOrCreate'](body);
+        }
 
-        const dataPromise = this.service.update(body.id, body);
-        const data = await dataPromise;
+        const data = await this.service.update(body.id, body);
 
-        this.afterUpdateOrCreate(body, data);
+        if (this['afterUpdateOrCreate']) {
+          await this['afterUpdateOrCreate'](body, data);
+        }
 
-        return dataPromise;
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -332,8 +368,8 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ConditionalDecorator(auth.update, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
     @ConditionalDecorator(auth.update, ApiBearerAuth())
     @ApiImplicitBody({
-      name: EntityUpdateBody.name,
-      type: EntityUpdateBody,
+      name: EntityUpdateVMT.name,
+      type: EntityUpdateVMT,
       description: 'Data for entity update',
       required: true,
       isArray: false,
@@ -341,16 +377,19 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOkResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Update'))
-    public async update(@Body() body: EntityUpdateBody): Promise<UpdateResult> {
+    public async update(@Body() body: EntityUpdateVMT): Promise<UpdateResult> {
       try {
-        await this.beforeUpdate(body);
+        if (this['beforeUpdate']) {
+          await this['beforeUpdate'](body);
+        }
 
-        const dataPromise = this.service.update(body.id, body);
-        const data = await dataPromise;
+        const data = await this.service.update(body.id, body);
 
-        this.afterUpdate(body, data);
+        if (this['afterUpdate']) {
+          await this['afterUpdate'](body, data);
+        }
 
-        return dataPromise;
+        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -368,42 +407,21 @@ export function baseControllerFactory<T, C = Partial<T>, U = Partial<T>, F = Par
     @ApiOperation(getOperationId(Entity.name, 'Delete'))
     public async delete(@Param('id') id: string | number): Promise<DeleteResult> {
       try {
-        await this.beforeDelete(id);
+        if (this['beforeDelete']) {
+          await this['beforeDelete'](id);
+        }
 
-        const dataPromise = this.service.delete(id);
-        const data = await dataPromise;
+        const data = await this.service.delete(id);
 
-        this.afterDelete(id, data);
+        if (this['afterDelete']) {
+          await this['afterDelete'](id, data);
+        }
 
-        return dataPromise;
+        return data;
       } catch (e) {
         throw new InternalServerErrorException(e);
       }
     }
-
-    // Hooks
-    protected beforeRoot(f: FindManyOptions<T> & FindConditions<T> = {}): void {}
-    protected afterRoot(f: FindManyOptions<T> & FindConditions<T> = {}, d: T[], m?: Partial<T>[]): void {}
-
-    protected beforeCount(): void {}
-    protected afterCount(c: Promise<number>): void {}
-
-    protected beforeGetById(i: string | number): void {}
-    protected aftergetById(i: string | number, d: T, m?: Partial<T>): void {}
-
-    protected afterPagination(q: IPaginationQuery, d: IFindAndCountResult<T>, md?: IFindAndCountResult<T>): void {}
-
-    protected beforeCreate(b: EntityCreateBody): void {}
-    protected afterCreate(b: EntityCreateBody, d: T, m?: Partial<T>): void {}
-
-    protected beforeUpdateOrCreate(b: EntityUpdateBody): void {}
-    protected afterUpdateOrCreate(b: EntityUpdateBody, d: T | UpdateResult, m?: Partial<T> | UpdateResult): void {}
-
-    protected beforeUpdate(b: EntityUpdateBody): void {}
-    protected afterUpdate(b: EntityUpdateBody, d: UpdateResult): void {}
-
-    protected beforeDelete(i: string | number): void {}
-    protected afterDelete(i: string | number, d: DeleteResult): void {}
   }
 
   return BaseController;

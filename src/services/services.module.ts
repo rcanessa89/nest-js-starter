@@ -1,16 +1,14 @@
 import { Module, Global } from '@nestjs/common';
+
 import { MapperService } from './mapper/mapper.service';
-import { EmailService } from './email/email.service';
 
 @Global()
 @Module({
   providers: [
-    MapperService,
-    EmailService,
+    MapperService
   ],
   exports: [
-    MapperService,
-    EmailService,
+    MapperService
   ],
 })
 export class ServicesModule {}
