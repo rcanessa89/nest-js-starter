@@ -16,7 +16,7 @@ const cacheProvider: ClassProvider = {
     CacheModule.register(),
     ServicesModule,
     DatabaseModule,
-    ModulesModule
-  ]
+    ModulesModule,
+  ],
 })
 export class AppModule {}

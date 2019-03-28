@@ -8,12 +8,20 @@ import {
 export interface IBaseService<T> {
   find: (f: FindManyOptions<T> & FindConditions<T>) => Promise<T[]>;
   findById: (i: string | number) => Promise<T>;
-  findAndCount: (ps: number, pn: number, filter: FindManyOptions<T>) => Promise<IFindAndCountResult<T>>;
+  findAndCount: (
+    ps: number,
+    pn: number,
+    filter: FindManyOptions<T>,
+  ) => Promise<IFindAndCountResult<T>>;
   create: (i: any) => Promise<T>;
   update: (id: string | number, i: any) => Promise<UpdateResult>;
   delete: (i: string | number) => Promise<DeleteResult>;
   count: () => Promise<number>;
-  map<K = any>(o: Partial<T> | Partial<T>[], s: string, d: string): Promise<any>;
+  map<K = any>(
+    o: Partial<T> | Partial<T>[],
+    s: string,
+    d: string,
+  ): Promise<any>;
 }
 
 export interface IDefaultAuthObj {
@@ -28,10 +36,10 @@ export interface IDefaultAuthObj {
 }
 
 export interface IBaseControllerFactoryOpts<T> {
-  entity: { new(): T };
-  entityVm: { new(): any };
-  entityCreateVm?: { new(): any };
-  entityUpdateVm?: { new(): any };
+  entity: { new (): T };
+  entityVm: { new (): any };
+  entityCreateVm?: { new (): any };
+  entityUpdateVm?: { new (): any };
   auth?: IDefaultAuthObj | boolean;
 }
 
@@ -58,11 +66,6 @@ export interface IBaseServiceOptions {
   mapping?: (config: AutoMapperJs.ICreateMapFluentFunctions) => void;
 }
 
-export interface IBaseController<T> {
-  root: (filter: string, response: Response) => Promise<T[] | Partial<T>[]>;
-  beforeRoot?: (f: FindManyOptions<T> & FindConditions<T>) => void;
-}
-
 export interface IBeforeRoot<T = any> {
   beforeRoot: (f: FindManyOptions<T>) => void;
 }
@@ -84,7 +87,11 @@ export interface IBeforePagination {
 }
 
 export interface IAfterPagination<T = any> {
-  afterPagination(q: IPaginationQuery, d: IFindAndCountResult<T>, md?: IFindAndCountResult<Partial<T>>): void;
+  afterPagination(
+    q: IPaginationQuery,
+    d: IFindAndCountResult<T>,
+    md?: IFindAndCountResult<Partial<T>>,
+  ): void;
 }
 
 export interface IBeforeGetById {
@@ -92,7 +99,7 @@ export interface IBeforeGetById {
 }
 
 export interface IAftergetById<T = any> {
-  aftergetById(i: string | number, d: T, m?: Partial<T>): void;
+  aftergetById(i: string | number, d: T, md?: Partial<T>): void;
 }
 
 export interface IBeforeCreate<VM = any> {
@@ -100,15 +107,19 @@ export interface IBeforeCreate<VM = any> {
 }
 
 export interface IAfterCreate<T = any, VM = any> {
-  afterCreate(v: VM, d: T, m?: Partial<T>): void;
+  afterCreate(v: VM, d: T, md?: Partial<T>): void;
 }
 
-export interface IBeforeUpdateOrCreate<VM> {
+export interface IBeforeUpdateOrCreate<VM = any> {
   beforeUpdateOrCreate(v: VM): void;
 }
 
 export interface IAfterUpdateOrCreate<T = any, VM = any> {
-  afterUpdateOrCreate(v: VM, d: T | UpdateResult, m?: Partial<T> | UpdateResult): void;
+  afterUpdateOrCreate(
+    v: VM,
+    d: T | UpdateResult,
+    md?: Partial<T> | UpdateResult,
+  ): void;
 }
 
 export interface IBeforeUpdate<VM = any> {
@@ -124,5 +135,5 @@ export interface IBeforeDelete {
 }
 
 export interface IAfterDelete {
-  afterDelete(i: string | number, d: DeleteResult) : void;
+  afterDelete(i: string | number, d: DeleteResult): void;
 }

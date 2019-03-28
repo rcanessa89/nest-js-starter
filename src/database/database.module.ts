@@ -19,9 +19,7 @@ const isDevEnv = isDev();
         __dirname + '/entities/**/*.entity{.ts,.js}',
         __dirname + '/../modules/**/*.entity{.ts,.js}',
       ],
-      migrations: [
-        __dirname + '/migrations/**/*.{.ts,.js}',
-      ],
+      migrations: [__dirname + '/migrations/**/*.{.ts,.js}'],
       migrationsRun: !isDevEnv,
       synchronize: isDevEnv,
     }),

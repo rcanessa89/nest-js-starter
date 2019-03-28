@@ -7,28 +7,27 @@ import {
   DeleteResult,
   UpdateResult,
   FindManyOptions,
-  FindOneOptions
+  FindOneOptions,
 } from 'typeorm';
 
 import {
   IBaseService,
   IFindAndCountResult,
   IBaseServiceCache,
-  IBaseServiceOptions
+  IBaseServiceOptions,
 } from './base.interface';
 import { MapperService } from '@services/mapper/mapper.service';
 
 export abstract class BaseService<T> implements IBaseService<T> {
   public withMap: boolean;
-  private readonly mapping: (config: AutoMapperJs.ICreateMapFluentFunctions) => void;
+  private readonly mapping: (
+    config: AutoMapperJs.ICreateMapFluentFunctions,
+  ) => void;
   private cache: IBaseServiceCache;
   protected readonly repository: Repository<T>;
   protected readonly mapper: AutoMapperJs.AutoMapper;
 
-  constructor(
-    repository: Repository<T>,
-    options: IBaseServiceOptions = {}
-  ) {
+  constructor(repository: Repository<T>, options: IBaseServiceOptions = {}) {
     this.repository = repository;
     this.withMap = !!options.mapping;
     this.mapping = options.mapping;
@@ -42,7 +41,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
   }
 
   public async find(filter: FindManyOptions<T> = {}): Promise<T[]> {
-    return this.repository.find({ ...filter, cache: this.cache.find  });
+    return this.repository.find({ ...filter, cache: this.cache.find });
   }
 
   public async findById(id: string | number): Promise<T> {
@@ -52,27 +51,37 @@ export abstract class BaseService<T> implements IBaseService<T> {
       throw new HttpException('ID invalid', HttpStatus.BAD_REQUEST);
     }
 
-    return this.repository.findOne(parsedId,{ cache: this.cache.findById });
+    return this.repository.findOne(parsedId, { cache: this.cache.findById });
   }
 
-  public async findOne(conditions: FindConditions<T>, options: FindOneOptions<T> = {}): Promise<T> {
-    return this.repository.findOne(conditions, { ...options, cache: this.cache.findOne });
+  public async findOne(
+    conditions: FindConditions<T>,
+    options: FindOneOptions<T> = {},
+  ): Promise<T> {
+    return this.repository.findOne(conditions, {
+      ...options,
+      cache: this.cache.findOne,
+    });
   }
 
-  public async findAndCount(pageSize: number = 30, pageNumber: number = 1, filter: FindManyOptions<T>): Promise<IFindAndCountResult<T>> {
+  public async findAndCount(
+    pageSize: number = 30,
+    pageNumber: number = 1,
+    filter: FindManyOptions<T>,
+  ): Promise<IFindAndCountResult<T>> {
     const skip = pageSize * (pageNumber - 1);
 
-    const [ result, total ] = await this.repository.findAndCount({
+    const [result, total] = await this.repository.findAndCount({
       ...filter,
       cache: this.cache.findAndCount,
       take: pageSize,
-      skip
+      skip,
     });
 
     return {
       data: result,
       count: result.length,
-      total
+      total,
     };
   }
 
@@ -111,8 +120,10 @@ export abstract class BaseService<T> implements IBaseService<T> {
   }
 
   private initializeMapper(): void {
-    const createMapConfig = this.mapper
-      .createMap(this.modelName, this.viewModelName);
+    const createMapConfig = this.mapper.createMap(
+      this.modelName,
+      this.viewModelName,
+    );
 
     this.mapping(createMapConfig);
   }
@@ -123,7 +134,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
         find: false,
         findById: false,
         findOne: false,
-        findAndCount: false
+        findAndCount: false,
       };
     }
 
@@ -132,7 +143,7 @@ export abstract class BaseService<T> implements IBaseService<T> {
         find: true,
         findById: true,
         findOne: true,
-        findAndCount: true
+        findAndCount: true,
       };
     }
 

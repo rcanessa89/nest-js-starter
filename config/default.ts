@@ -5,5 +5,5 @@ export default {
   DB_PORT: 3306,
   DB_USERNAME: 'root',
   DB_PASSWORD: 'EDhunter89',
-  DB_NAME: 'test'
+  DB_NAME: 'nest-js-starter-dev'
 };

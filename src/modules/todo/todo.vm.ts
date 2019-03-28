@@ -1,18 +1,10 @@
 import { ApiModelProperty } from '@nestjs/swagger';
+import { BaseVM } from '@modules/base/base.vm';
 
-export class TodoVM {
-  @ApiModelProperty()
-  id: number;
-
+export class TodoVM extends BaseVM {
   @ApiModelProperty()
   description: string;
 
   @ApiModelProperty()
   isComplete: boolean;
-
-  @ApiModelProperty({ type: String, format: 'date-time' })
-  createdAt: string;
-
-  @ApiModelProperty({ type: String, format: 'date-time' })
-  updatedAt: string;
 }

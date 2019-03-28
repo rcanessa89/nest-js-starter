@@ -1,50 +1,41 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": false,
-    "noImplicitAny": false,
     "removeComments": true,
-    "noLib": false,
-    "allowSyntheticDefaultImports": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "target": "es6",
     "sourceMap": true,
-    "allowJs": true,
     "outDir": "./dist",
-    "baseUrl": "./src",
+    "baseUrl": "./",
     "paths": {
       "@constants": [
-        "app.constants"
+        "src/app.constants"
       ],
       "@utils/*": [
-        "utils/*"
+        "src/utils/*"
       ],
       "@enums/*": [
-        "enums/*"
+        "src/enums/*"
       ],
       "@modules/*": [
-        "modules/*"
+        "src/modules/*"
       ],
       "@models/*": [
-        "models/*"
+        "src/models/*"
       ],
       "@base/*": [
-        "modules/base/*"
+        "src/modules/base/*"
       ],
       "@services/*": [
-        "services/*"
+        "src/services/*"
       ],
       "@entities/*": [
-        "database/entities/*"
+        "src/database/entities/*"
       ]
     }
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
-  ]
+  "exclude": ["node_modules"]
 }

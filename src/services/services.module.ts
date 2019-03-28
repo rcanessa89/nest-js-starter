@@ -4,11 +4,7 @@ import { MapperService } from './mapper/mapper.service';
 
 @Global()
 @Module({
-  providers: [
-    MapperService
-  ],
-  exports: [
-    MapperService
-  ],
+  providers: [MapperService],
+  exports: [MapperService],
 })
 export class ServicesModule {}

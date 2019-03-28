@@ -13,7 +13,7 @@ import {
   Query,
   UseGuards,
   NotFoundException,
-  Response
+  Response,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -47,31 +47,49 @@ import {
   IBaseControllerFactoryOpts,
   IPaginationQuery,
   IFindAndCountResult,
-  IBaseController
 } from './base.interface';
 
 const metadataKey = 'swagger/apiModelPropertiesArray';
-const excludedMetadata = [':id', ':createdAt', ':updatedAt'];
+const excludedCreateMetadata = [':id', ':createdAt', ':updatedAt'];
+const excludedUpdateMetadata = [':createdAt', ':updatedAt'];
 
 export function baseControllerFactory<T>(
   options: IBaseControllerFactoryOpts<T>,
 ) {
   const Entity = options.entity;
   const EntityVM = options.entityVm;
-  const createEntityName: string = options.entityCreateVm ? options.entityCreateVm.name : formatEntityName(EntityVM);
-  const updateEntityName: string = options.entityUpdateVm ? options.entityUpdateVm.name : formatEntityName(EntityVM, false);
-  const EntityCreateVM = options.entityCreateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata, createEntityName);
-  const EntityUpdateVM = options.entityUpdateVm || filterMetadata(EntityVM, metadataKey, excludedMetadata, updateEntityName);
+  const createEntityName: string = options.entityCreateVm
+    ? options.entityCreateVm.name
+    : formatEntityName(EntityVM);
+  const updateEntityName: string = options.entityUpdateVm
+    ? options.entityUpdateVm.name
+    : formatEntityName(EntityVM, false);
+  const EntityCreateVM =
+    options.entityCreateVm ||
+    filterMetadata(
+      EntityVM,
+      metadataKey,
+      excludedCreateMetadata,
+      createEntityName,
+    );
+  const EntityUpdateVM =
+    options.entityUpdateVm ||
+    filterMetadata(
+      EntityVM,
+      metadataKey,
+      excludedUpdateMetadata,
+      updateEntityName,
+    );
   const auth = getAuthObj(options.auth);
 
   class EntityCreateVMT extends EntityCreateVM {}
   class EntityUpdateVMT extends EntityUpdateVM {}
 
   Object.defineProperty(EntityCreateVMT, 'name', {
-    value: EntityCreateVM.name
+    value: EntityCreateVM.name,
   });
   Object.defineProperty(EntityUpdateVMT, 'name', {
-    value: EntityUpdateVM.name
+    value: EntityUpdateVM.name,
   });
 
   @ApiUseTags(Entity.name)
@@ -108,7 +126,9 @@ export function baseControllerFactory<T>(
         const data = await this.service.find(parsedFilter);
 
         if (this.service.withMap) {
-          const mappedData = await Promise.all(data.map(item => this.service.map(item)));
+          const mappedData = await Promise.all(
+            data.map(item => this.service.map(item)),
+          );
 
           response.send(mappedData);
 
@@ -117,10 +137,10 @@ export function baseControllerFactory<T>(
           }
         } else {
           response.send(data);
-        }
 
-        if (this['afterRoot']) {
-          this['afterRoot'](parsedFilter, data);
+          if (this['afterRoot']) {
+            this['afterRoot'](parsedFilter, data);
+          }
         }
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -132,26 +152,29 @@ export function baseControllerFactory<T>(
     @ConditionalDecorator(auth.count, ApiBearerAuth())
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Count'))
-    public async count(): Promise<number> {
+    public async count(@Response() response) {
       try {
         if (this['beforeCount']) {
           await this['beforeCount']();
         }
 
-        const count = this.service.count();
+        const count = await this.service.count();
+
+        response.send({ count });
 
         if (this['afterCount']) {
-          await this['afterCount'](count);
+          this['afterCount'](count);
         }
-
-        return count;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
     @Get('pagination')
-    @ConditionalDecorator(auth.pagination, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
+    @ConditionalDecorator(
+      auth.pagination,
+      UseGuards(AuthGuard(AUTH_GUARD_TYPE)),
+    )
     @ConditionalDecorator(auth.pagination, ApiBearerAuth())
     @ApiImplicitQuery({
       name: 'pageSize',
@@ -176,49 +199,54 @@ export function baseControllerFactory<T>(
       isArray: true,
     })
     @ApiBadRequestResponse({ type: ApiException })
-    public async pagination(@Query() query: IPaginationQuery): Promise<IFindAndCountResult<T>> {
+    public async pagination(
+      @Query() query: IPaginationQuery,
+      @Response() response,
+    ) {
       try {
-        const {
-          pageSize,
-          pageNumber,
-          filter
-        } = query;
+        const { pageSize, pageNumber, filter } = query;
         const parsedFilter = filter ? JSON.parse(filter) : {};
         const pasedQuery = {
           pageSize,
           pageNumber,
-          filter: parsedFilter
+          filter: parsedFilter,
         };
 
         if (this['beforePagination']) {
           await this['beforePagination'](pasedQuery);
         }
 
-        const data = await this.service.findAndCount(pageSize, pageNumber, parsedFilter);
+        const data = await this.service.findAndCount(
+          pageSize,
+          pageNumber,
+          parsedFilter,
+        );
 
         if (this.service.withMap) {
-          const mappedData = await Promise.all(data.data.map(item => this.service.map(item)));
+          const mappedData = await Promise.all(
+            data.data.map(item => this.service.map(item)),
+          );
 
-          if (this['afterPagination']) {
-            await this['afterPagination'](
-              pasedQuery,
-              { data: data.data, count: data.count, total: data.total },
-              { data: mappedData, count: data.count, total: data.total }
-            );
-          }
-
-          return {
+          response.send({
             data: mappedData,
             count: data.count,
-            total: data.total
-          };
-        }
+            total: data.total,
+          });
 
-        if (this['afterPagination']) {
-          await this['afterPagination'](parsedFilter, data);
-        }
+          if (this['afterPagination']) {
+            this['afterPagination'](
+              pasedQuery,
+              { data: data.data, count: data.count, total: data.total },
+              { data: mappedData, count: data.count, total: data.total },
+            );
+          }
+        } else {
+          response.send(data);
 
-        return data;
+          if (this['afterPagination']) {
+            this['afterPagination'](parsedFilter, data);
+          }
+        }
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -235,7 +263,10 @@ export function baseControllerFactory<T>(
     @ApiOkResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'FindById'))
-    public async getById(@Param('id') id: string | number): Promise<T | Partial<T>> {
+    public async getById(
+      @Param('id') id: string | number,
+      @Response() response,
+    ) {
       try {
         if (this['beforeGetById']) {
           await this['beforeGetById'](id);
@@ -246,18 +277,18 @@ export function baseControllerFactory<T>(
         if (this.service.withMap) {
           const mappedData = await this.service.map(data);
 
+          response.send(mappedData);
+
           if (this['aftergetById']) {
-            await this['aftergetById'](id, data, mappedData);
+            this['aftergetById'](id, data, mappedData);
           }
+        } else {
+          response.send(data);
 
-          return mappedData;
+          if (this['aftergetById']) {
+            this['aftergetById'](id, data);
+          }
         }
-
-        if (this['aftergetById']) {
-          await this['aftergetById'](id, data);
-        }
-
-        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -276,7 +307,7 @@ export function baseControllerFactory<T>(
     @ApiCreatedResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Create'))
-    public async create(@Body() body: EntityCreateVMT): Promise<T | Partial<T>> {
+    public async create(@Body() body: EntityCreateVMT, @Response() response) {
       try {
         if (this['beforeCreate']) {
           await this['beforeCreate'](body);
@@ -287,25 +318,28 @@ export function baseControllerFactory<T>(
         if (this.service.withMap) {
           const mappedData = await this.service.map(data);
 
+          response.send(mappedData);
+
           if (this['afterCreate']) {
-            await this['afterCreate'](body, data, mappedData);
+            this['afterCreate'](body, data, mappedData);
           }
+        } else {
+          response.send(data);
 
-          return mappedData;
+          if (this['afterCreate']) {
+            this['afterCreate'](body, data);
+          }
         }
-
-        if (this['afterCreate']) {
-          await this['afterCreate'](body, data);
-        }
-
-        return data;
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
     @Put()
-    @ConditionalDecorator(auth.updateOrCreate, UseGuards(AuthGuard(AUTH_GUARD_TYPE)))
+    @ConditionalDecorator(
+      auth.updateOrCreate,
+      UseGuards(AuthGuard(AUTH_GUARD_TYPE)),
+    )
     @ConditionalDecorator(auth.updateOrCreate, ApiBearerAuth())
     @ApiImplicitBody({
       name: EntityUpdateVMT.name,
@@ -316,7 +350,10 @@ export function baseControllerFactory<T>(
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'UpdateOrCreate'))
-    public async updateOrCreate(@Body() body: EntityUpdateVMT): Promise<UpdateResult | T | Partial<T>> {
+    public async updateOrCreate(
+      @Body() body: EntityUpdateVMT,
+      @Response() response,
+    ) {
       const entity = await this.service.findById(body.id);
 
       if (!entity) {
@@ -330,37 +367,37 @@ export function baseControllerFactory<T>(
           if (this.service.withMap) {
             const mappedData = await this.service.map(data);
 
+            response.send(mappedData);
+
             if (this['afterUpdateOrCreate']) {
-              await this['afterUpdateOrCreate'](body, data, mappedData);
+              this['afterUpdateOrCreate'](body, data, mappedData);
             }
+          } else {
+            response.send(data);
 
-            return mappedData;
+            if (this['afterUpdateOrCreate']) {
+              this['afterUpdateOrCreate'](body, data);
+            }
           }
-
-          if (this['afterUpdateOrCreate']) {
-            await this['afterUpdateOrCreate'](body, data);
-          }
-
-          return data;
         } catch (e) {
           throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-      }
+      } else {
+        try {
+          if (this['beforeUpdateOrCreate']) {
+            await this['beforeUpdateOrCreate'](body);
+          }
 
-      try {
-        if (this['beforeUpdateOrCreate']) {
-          await this['beforeUpdateOrCreate'](body);
+          const data = await this.service.update(body.id, body);
+
+          response.send(data);
+
+          if (this['afterUpdateOrCreate']) {
+            this['afterUpdateOrCreate'](body, data);
+          }
+        } catch (e) {
+          throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-        const data = await this.service.update(body.id, body);
-
-        if (this['afterUpdateOrCreate']) {
-          await this['afterUpdateOrCreate'](body, data);
-        }
-
-        return data;
-      } catch (e) {
-        throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
@@ -377,7 +414,7 @@ export function baseControllerFactory<T>(
     @ApiOkResponse({ type: EntityVM })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Update'))
-    public async update(@Body() body: EntityUpdateVMT): Promise<UpdateResult> {
+    public async update(@Body() body: EntityUpdateVMT, @Response() response) {
       try {
         if (this['beforeUpdate']) {
           await this['beforeUpdate'](body);
@@ -385,11 +422,11 @@ export function baseControllerFactory<T>(
 
         const data = await this.service.update(body.id, body);
 
-        if (this['afterUpdate']) {
-          await this['afterUpdate'](body, data);
-        }
+        response.send(data);
 
-        return data;
+        if (this['afterUpdate']) {
+          this['afterUpdate'](body, data);
+        }
       } catch (e) {
         throw new HttpException(e, HttpStatus.INTERNAL_SERVER_ERROR);
       }
@@ -405,7 +442,10 @@ export function baseControllerFactory<T>(
     })
     @ApiBadRequestResponse({ type: ApiException })
     @ApiOperation(getOperationId(Entity.name, 'Delete'))
-    public async delete(@Param('id') id: string | number): Promise<DeleteResult> {
+    public async delete(
+      @Param('id') id: string | number,
+      @Response() response,
+    ) {
       try {
         if (this['beforeDelete']) {
           await this['beforeDelete'](id);
@@ -413,11 +453,11 @@ export function baseControllerFactory<T>(
 
         const data = await this.service.delete(id);
 
-        if (this['afterDelete']) {
-          await this['afterDelete'](id, data);
-        }
+        response.send(data);
 
-        return data;
+        if (this['afterDelete']) {
+          this['afterDelete'](id, data);
+        }
       } catch (e) {
         throw new InternalServerErrorException(e);
       }
