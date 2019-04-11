@@ -72,6 +72,16 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "@constants": "<rootDir>/app.constants",
+      "@utils/(.*)": "<rootDir>/utils/$1",
+      "@enums/(.*)": "<rootDir>/enums/$1",
+      "@modules/(.*)": "<rootDir>/modules/$1",
+      "@models/(.*)": "<rootDir>/models/$1",
+      "@base/(.*)": "<rootDir>/modules/base/$1",
+      "@services/(.*)": "<rootDir>/services/$1",
+      "@entities/(.*)": "<rootDir>/database/entities/$1"
+    }
   }
 }

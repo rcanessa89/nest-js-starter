@@ -1,0 +1,7 @@
+{
+  "cli": {
+    "entitiesDir": "src/database/entities",
+    "subscribersDir": "src/database/subscribers",
+    "migrationsDir": "src/database/migrations"
+  }
+}
